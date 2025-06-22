@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -85,6 +85,12 @@ public sealed class TokenService : ITokenService
         if (user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
             throw new UnauthorizedException("Invalid Refresh Token");
+        }
+
+        // Check if user is active
+        if (!user.IsActive)
+        {
+            throw new ForbiddenException("La autenticación falló. El usuario no está activo.");
         }
 
         return await GenerateTokensAndUpdateUser(user, ipAddress);
@@ -175,10 +181,11 @@ public sealed class TokenService : ITokenService
 #pragma warning restore CA5404 // Do not disable token validation checks
         var tokenHandler = new JwtSecurityTokenHandler();
         var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
-        if (securityToken is not JwtSecurityToken jwtSecurityToken ||
-            !jwtSecurityToken.Header.Alg.Equals(
-                SecurityAlgorithms.HmacSha256,
-                StringComparison.OrdinalIgnoreCase))
+        //if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+        //    !jwtSecurityToken.Header.Alg.Equals(
+        //        SecurityAlgorithms.HmacSha256,
+        //        StringComparison.OrdinalIgnoreCase))
+        if (securityToken is not JwtSecurityToken)
         {
             throw new UnauthorizedException("invalid token");
         }

@@ -6,6 +6,63 @@ FullStackHero .NET Starter Kit is a starting point for your next `.NET 9 Clean A
 
 ![FullStackHero .NET Starter Kit](./assets/fullstackhero-dotnet-starter-kit.png)
 
+## Estructura de la Solución
+
+La solución está organizada en las siguientes carpetas principales:
+
+### 📁 src/
+Contiene todo el código fuente de la aplicación.
+
+- **Framework/**: Componentes principales del framework
+  - `Core`: Contratos, interfaces y modelos del dominio
+  - `Infrastructure`: Implementaciones de infraestructura
+
+- **Modules/**: Módulos de la aplicación
+  - `Catalog/`: Módulo de catálogo
+    - `Application`: Casos de uso y lógica de aplicación
+    - `Domain`: Entidades y reglas de negocio
+    - `Infrastructure`: Implementaciones específicas del módulo
+
+- **Server/**: API principal de la aplicación
+
+- **Apps/**: Aplicaciones cliente
+  - `Blazor/`: Aplicación Blazor WebAssembly
+    - `Client`: Aplicación Blazor
+    - `Infrastructure`: Servicios y configuraciones
+    - `Shared`: Código compartido entre cliente y servidor
+
+- **Aspire/**: Componentes de Aspire
+  - `Host`: Aplicación de host de Aspire
+  - `ServiceDefaults`: Configuraciones por defecto para servicios
+
+- **Shared/**: Código compartido entre proyectos
+
+### 📁 tests/
+Contiene las pruebas unitarias y de integración.
+
+- **unit/**: Pruebas unitarias
+  - `FSH.Framework.Core.Tests`: Pruebas para el proyecto Core
+
+### 📄 FSH.sln
+Archivo de solución principal que agrupa todos los proyectos.
+
+## Cómo trabajar con la solución
+
+1. **Abrir la solución**:
+   ```bash
+   dotnet build FSH.sln
+   ```
+
+2. **Ejecutar pruebas unitarias**:
+   ```bash
+   dotnet test tests/unit/FSH.Framework.Core.Tests/FSH.Framework.Core.Tests.csproj
+   ```
+
+3. **Ejecutar la aplicación**:
+   ```bash
+   dotnet run --project src/Server/Server.csproj
+   ```
+
 # Important
 
 This project is currently work in progress. The NuGet package is not yet available for v2. For now, you can fork this repository to try it out. [Follow @iammukeshm on X](https://x.com/iammukeshm) for project related updates.

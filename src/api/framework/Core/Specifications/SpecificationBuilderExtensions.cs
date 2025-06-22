@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using Ardalis.Specification;
@@ -10,11 +10,22 @@ namespace FSH.Framework.Core.Specifications;
 // See https://github.com/ardalis/Specification/issues/53
 public static class SpecificationBuilderExtensions
 {
-    public static ISpecificationBuilder<T> SearchBy<T>(this ISpecificationBuilder<T> query, BaseFilter filter) =>
-        query
+    /// <summary>
+    /// Aplica los filtros de búsqueda a la consulta de especificación.
+    /// </summary>
+    /// <typeparam name="T">Tipo de entidad en la especificación.</typeparam>
+    /// <param name="query">Constructor de especificación al que se aplicarán los filtros.</param>
+    /// <param name="filter">Filtro de búsqueda a aplicar. Puede ser nulo, en cuyo caso no se aplicará ningún filtro.</param>
+    /// <returns>Constructor de especificación con los filtros aplicados.</returns>
+    public static ISpecificationBuilder<T> SearchBy<T>(this ISpecificationBuilder<T> query, BaseFilter? filter)
+    {
+        if (filter == null) return query;
+            
+        return query
             .SearchByKeyword(filter.Keyword)
             .AdvancedSearch(filter.AdvancedSearch)
             .AdvancedFilter(filter.AdvancedFilter);
+    }
 
     public static ISpecificationBuilder<T> PaginateBy<T>(this ISpecificationBuilder<T> query, PaginationFilter filter)
     {
@@ -118,73 +129,153 @@ public static class SpecificationBuilderExtensions
             .Add(new SearchExpressionInfo<T>(selector, searchTerm, 1));
     }
 
+    /// <summary>
+    /// Aplica un filtro avanzado a la consulta de especificación.
+    /// </summary>
+    /// <typeparam name="T">Tipo de entidad en la especificación.</typeparam>
+    /// <param name="specificationBuilder">Constructor de especificación al que se aplicará el filtro.</param>
+    /// <param name="filter">Filtro a aplicar. Puede ser nulo, en cuyo caso no se aplicará ningún filtro.</param>
+    /// <returns>Constructor de especificación con el filtro aplicado.</returns>
+    /// <exception cref="CustomException">Se lanza cuando se declara una lógica pero no se proporcionan filtros.</exception>
     public static IOrderedSpecificationBuilder<T> AdvancedFilter<T>(
         this ISpecificationBuilder<T> specificationBuilder,
         Filter? filter)
     {
-        if (filter is not null)
+        if (filter is null)
         {
-            var parameter = Expression.Parameter(typeof(T));
-
-            Expression binaryExpresioFilter;
-
-            if (!string.IsNullOrEmpty(filter.Logic))
-            {
-                if (filter.Filters is null) throw new CustomException("The Filters attribute is required when declaring a logic");
-                binaryExpresioFilter = CreateFilterExpression(filter.Logic, filter.Filters, parameter);
-            }
-            else
-            {
-                var filterValid = GetValidFilter(filter);
-                binaryExpresioFilter = CreateFilterExpression(filterValid.Field!, filterValid.Operator!, filterValid.Value, parameter);
-            }
-
-            ((List<WhereExpressionInfo<T>>)specificationBuilder.Specification.WhereExpressions)
-                .Add(new WhereExpressionInfo<T>(Expression.Lambda<Func<T, bool>>(binaryExpresioFilter, parameter)));
+            return new OrderedSpecificationBuilder<T>(specificationBuilder.Specification);
         }
+
+        var parameter = Expression.Parameter(typeof(T));
+        Expression binaryExpressionFilter;
+
+        if (!string.IsNullOrEmpty(filter.Logic))
+        {
+            if (filter.Filters is null)
+            {
+                throw new CustomException("El atributo Filters es requerido cuando se declara una lógica");
+            }
+
+            binaryExpressionFilter = CreateFilterExpression(filter.Logic, filter.Filters, parameter);
+        }
+        else
+        {
+            var filterValid = GetValidFilter(filter);
+            binaryExpressionFilter = CreateFilterExpression(
+                filterValid.Field ?? throw new InvalidOperationException("El campo del filtro no puede ser nulo"),
+                filterValid.Operator ?? throw new InvalidOperationException("El operador del filtro no puede ser nulo"),
+                filterValid.Value,
+                parameter);
+        }
+
+        ((List<WhereExpressionInfo<T>>)specificationBuilder.Specification.WhereExpressions)
+            .Add(new WhereExpressionInfo<T>(Expression.Lambda<Func<T, bool>>(binaryExpressionFilter, parameter)));
 
         return new OrderedSpecificationBuilder<T>(specificationBuilder.Specification);
     }
 
+    /// <summary>
+    /// Crea una expresión de filtro a partir de una lógica y una colección de filtros.
+    /// </summary>
+    /// <param name="logic">Lógica a aplicar para combinar los filtros (AND, OR, etc.).</param>
+    /// <param name="filters">Colección de filtros a aplicar.</param>
+    /// <param name="parameter">Parámetro de expresión para la entidad.</param>
+    /// <returns>Expresión que representa el filtro combinado.</returns>
+    /// <exception cref="ArgumentNullException">Se lanza cuando <paramref name="logic"/> o <paramref name="filters"/> es nulo.</exception>
+    /// <exception cref="CustomException">Se lanza cuando un filtro declara una lógica pero no proporciona filtros.</exception>
     private static Expression CreateFilterExpression(
         string logic,
         IEnumerable<Filter> filters,
         ParameterExpression parameter)
     {
-        Expression filterExpression = default!;
+        if (string.IsNullOrEmpty(logic))
+        {
+            throw new ArgumentNullException(nameof(logic), "La lógica no puede ser nula o vacía");
+        }
+
+        if (filters is null)
+        {
+            throw new ArgumentNullException(nameof(filters), "La colección de filtros no puede ser nula");
+        }
+
+        Expression? filterExpression = null;
 
         foreach (var filter in filters)
         {
-            Expression bExpresionFilter;
+            if (filter is null) continue;
+
+            Expression currentExpression;
 
             if (!string.IsNullOrEmpty(filter.Logic))
             {
-                if (filter.Filters is null) throw new CustomException("The Filters attribute is required when declaring a logic");
-                bExpresionFilter = CreateFilterExpression(filter.Logic, filter.Filters, parameter);
+                if (filter.Filters is null)
+                {
+                    throw new CustomException("El atributo Filters es requerido cuando se declara una lógica");
+                }
+                currentExpression = CreateFilterExpression(filter.Logic, filter.Filters, parameter);
             }
             else
             {
                 var filterValid = GetValidFilter(filter);
-                bExpresionFilter = CreateFilterExpression(filterValid.Field!, filterValid.Operator!, filterValid.Value, parameter);
+                currentExpression = CreateFilterExpression(
+                    filterValid.Field ?? throw new InvalidOperationException("El campo del filtro no puede ser nulo"),
+                    filterValid.Operator ?? throw new InvalidOperationException("El operador del filtro no puede ser nulo"),
+                    filterValid.Value,
+                    parameter);
             }
 
-            filterExpression = filterExpression is null ? bExpresionFilter : CombineFilter(logic, filterExpression, bExpresionFilter);
+            filterExpression = filterExpression is null 
+                ? currentExpression 
+                : CombineFilter(logic, filterExpression, currentExpression);
         }
 
-        return filterExpression;
+        return filterExpression ?? Expression.Constant(true); // Si no hay filtros, devuelve true
     }
 
+    /// <summary>
+    /// Crea una expresión de filtro para un campo específico.
+    /// </summary>
+    /// <param name="field">Nombre del campo a filtrar.</param>
+    /// <param name="filterOperator">Operador de filtro a aplicar.</param>
+    /// <param name="value">Valor contra el que se filtrará.</param>
+    /// <param name="parameter">Parámetro de expresión para la entidad.</param>
+    /// <returns>Expresión que representa el filtro.</returns>
+    /// <exception cref="ArgumentNullException">Se lanza cuando <paramref name="field"/>, <paramref name="filterOperator"/> o <paramref name="parameter"/> es nulo.</exception>
     private static Expression CreateFilterExpression(
         string field,
         string filterOperator,
         object? value,
         ParameterExpression parameter)
     {
-        var propertyExpresion = GetPropertyExpression(field, parameter);
-        var valueExpresion = GeValuetExpression(field, value, propertyExpresion.Type);
-        return CreateFilterExpression(propertyExpresion, valueExpresion, filterOperator);
+        if (string.IsNullOrEmpty(field))
+        {
+            throw new ArgumentNullException(nameof(field), "El campo no puede ser nulo o vacío");
+        }
+
+        if (string.IsNullOrEmpty(filterOperator))
+        {
+            throw new ArgumentNullException(nameof(filterOperator), "El operador no puede ser nulo o vacío");
+        }
+
+        if (parameter is null)
+        {
+            throw new ArgumentNullException(nameof(parameter), "El parámetro no puede ser nulo");
+        }
+
+        var propertyExpression = GetPropertyExpression(field, parameter);
+        var valueExpression = GeValuetExpression(field, value, propertyExpression.Type);
+        return CreateFilterExpression(propertyExpression, valueExpression, filterOperator);
     }
 
+    /// <summary>
+    /// Crea una expresión de filtro a partir de expresiones de miembro y valor.
+    /// </summary>
+    /// <param name="memberExpression">Expresión que representa el miembro de la entidad.</param>
+    /// <param name="constantExpression">Expresión que representa el valor constante para comparar.</param>
+    /// <param name="filterOperator">Operador de filtro a aplicar.</param>
+    /// <returns>Expresión que representa la comparación.</returns>
+    /// <exception cref="ArgumentNullException">Se lanza cuando <paramref name="memberExpression"/>, <paramref name="constantExpression"/> o <paramref name="filterOperator"/> es nulo.</exception>
+    /// <exception cref="ArgumentException">Se lanza cuando el operador de filtro no es válido.</exception>
     private static Expression CreateFilterExpression(
         Expression memberExpression,
         Expression constantExpression,
@@ -235,8 +326,20 @@ public static class SpecificationBuilderExtensions
         return (MemberExpression)propertyExpression;
     }
 
-    private static string GetStringFromJsonElement(object value)
-        => ((JsonElement)value).GetString()!;
+    /// <summary>
+    /// Obtiene una representación de cadena de un valor que puede ser un string, JsonElement u otro tipo.
+    /// </summary>
+    /// <param name="value">Valor del que se obtendrá la representación de cadena.</param>
+    /// <returns>Representación de cadena del valor, o null si el valor es nulo.</returns>
+    private static string? GetStringFromJsonElement(object value)
+    {
+        return value switch
+        {
+            string str => str,
+            JsonElement element => element.GetString(),
+            _ => value?.ToString()
+        };
+    }
 
     private static ConstantExpression GeValuetExpression(
         string field,
@@ -273,7 +376,7 @@ public static class SpecificationBuilderExtensions
         if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
         {
             string? text = GetStringFromJsonElement(value);
-            return Expression.Constant(ChangeType(text, propertyType), propertyType);
+            return Expression.Constant(ChangeType(text!, propertyType), propertyType);
         }
 
         return Expression.Constant(ChangeType(((JsonElement)value).GetRawText(), propertyType), propertyType);
@@ -296,16 +399,37 @@ public static class SpecificationBuilderExtensions
         return Convert.ChangeType(value, t!);
     }
 
+    /// <summary>
+    /// Valida que un filtro tenga los campos obligatorios.
+    /// </summary>
+    /// <param name="filter">Filtro a validar.</param>
+    /// <returns>El mismo filtro si es válido.</returns>
+    /// <exception cref="ArgumentNullException">Se lanza cuando el filtro es nulo.</exception>
+    /// <exception cref="CustomException">Se lanza cuando faltan campos obligatorios en el filtro.</exception>
     private static Filter GetValidFilter(Filter filter)
     {
-        if (string.IsNullOrEmpty(filter.Field)) throw new CustomException("The field attribute is required when declaring a filter");
-        if (string.IsNullOrEmpty(filter.Operator)) throw new CustomException("The Operator attribute is required when declaring a filter");
+        if (filter is null)
+        {
+            throw new ArgumentNullException(nameof(filter), "El filtro no puede ser nulo");
+        }
+
+        if (string.IsNullOrWhiteSpace(filter.Field))
+        {
+            throw new CustomException("El atributo 'Field' es requerido al declarar un filtro");
+        }
+
+        if (string.IsNullOrWhiteSpace(filter.Operator))
+        {
+            throw new CustomException("El atributo 'Operator' es requerido al declarar un filtro");
+        }
+
         return filter;
     }
 
     public static IOrderedSpecificationBuilder<T> OrderBy<T>(
         this ISpecificationBuilder<T> specificationBuilder,
-        string[]? orderByFields)
+        string[]? orderByFields,
+        bool useCustomImplementation = true)
     {
         if (orderByFields is not null)
         {

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace FSH.Framework.Infrastructure.Identity.Users;
 public class FshUser : IdentityUser
@@ -9,6 +9,8 @@ public class FshUser : IdentityUser
     public bool IsActive { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime RefreshTokenExpiryTime { get; set; }
-
     public string? ObjectId { get; set; }
+    
+    // Propiedad para soporte de multi-tenancy
+    public string? TenantId { get; set; }
 }
