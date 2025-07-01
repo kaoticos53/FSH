@@ -1,4 +1,6 @@
-﻿@page "/"
+@page "/"
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Home> L
 @using System.Security.Claims
 
 <MudContainer>
@@ -9,7 +11,7 @@
             </div>
         </MudItem>
         <MudItem xs="12" sm="12" md="12">
-            <MudText Align="Align.Center" Typo="Typo.h2">The best way to start a fullstack .NET 9 Web App.</MudText>
+            <MudText Align="Align.Center" Typo="Typo.h2">@L["The best way to start a fullstack .NET 9 Web App."]</MudText>
         </MudItem>
 
         <MudItem xs="12" sm="12" md="12">
