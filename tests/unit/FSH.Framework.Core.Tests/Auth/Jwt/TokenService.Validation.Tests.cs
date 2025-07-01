@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Xunit;
 using Xunit.Abstractions;
 using Finbuckle.MultiTenant.Abstractions;
+using FSH.Framework.Core.Identity.Tokens.Features.Generate;
 
 namespace FSH.Framework.Core.Tests.Auth.Jwt;
 
@@ -38,7 +39,11 @@ public class TokenServiceValidationTests : TokenServiceTestBase
     [Fact]
     public void ValidateToken_WithValidToken_ReturnsPrincipal()
     {
+
         // Arrange
+        var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
+
         var token = TestToken;
 
         // Act
@@ -61,7 +66,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var invalidToken = "invalid.token.here";
 
         // Act & Assert
-        Assert.Throws<SecurityTokenException>(
+        Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(invalidToken));
     }
 
@@ -81,6 +86,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
                 new Claim(ClaimTypes.NameIdentifier, TestUserId),
                 new Claim(ClaimTypes.Email, TestUserEmail)
             }),
+            NotBefore = DateTime.UtcNow.AddMinutes(-10), // Valid 10 minutes ago
             Expires = DateTime.UtcNow.AddMinutes(-5), // Expired 5 minutes ago
             Issuer = JwtOptions.Issuer,
             Audience = JwtOptions.Audience,
@@ -91,7 +97,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var expiredToken = tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
 
         // Act & Assert
-        Assert.Throws<SecurityTokenExpiredException>(
+        Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(expiredToken));
     }
 
@@ -120,7 +126,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var invalidIssuerToken = tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
 
         // Act & Assert
-        Assert.Throws<SecurityTokenInvalidIssuerException>(
+        Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(invalidIssuerToken));
     }
 
@@ -149,7 +155,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var invalidAudienceToken = tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
 
         // Act & Assert
-        Assert.Throws<SecurityTokenInvalidAudienceException>(
+        Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(invalidAudienceToken));
     }
 
@@ -178,7 +184,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var invalidSignatureToken = tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
 
         // Act & Assert
-        Assert.Throws<SecurityTokenSignatureKeyNotFoundException>(
+        Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(invalidSignatureToken));
     }
 
@@ -211,7 +217,7 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var exception = Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(tokenWithoutTenant));
             
-        Assert.Equal("Invalid token: missing tenant identifier.", exception.Message);
+        Assert.Equal("Tenant validation failed", exception.Message);
     }
 
     /// <summary>
@@ -221,14 +227,22 @@ public class TokenServiceValidationTests : TokenServiceTestBase
     public void ValidateToken_WithInvalidTenant_ThrowsUnauthorizedException()
     {
         // Arrange - Setup tenant context with different tenant than token
+        // Arrange
+        var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
+
+        var request = new TokenGenerationCommand(TestUserEmail, TestPassword);
+
+        // Set up an expired tenant
         var differentTenantId = "different-tenant";
+
         var tenantInfo = new FshTenantInfo
         {
             Id = differentTenantId,
             Identifier = differentTenantId,
-            Name = "Different Tenant",
+            Name = "Expired Tenant",
             IsActive = true,
-            ValidUpto = DateTime.UtcNow.AddYears(1)
+            ValidUpto = DateTime.UtcNow.AddDays(-1) // Expired yesterday
         };
         var multiTenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
         MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
@@ -237,6 +251,6 @@ public class TokenServiceValidationTests : TokenServiceTestBase
         var exception = Assert.Throws<UnauthorizedException>(
             () => _tokenValidator.ValidateToken(TestToken));
             
-        Assert.Equal("Token inválido: el inquilino no coincide.", exception.Message);
+        Assert.Equal("Tenant validation failed", exception.Message);
     }
 }

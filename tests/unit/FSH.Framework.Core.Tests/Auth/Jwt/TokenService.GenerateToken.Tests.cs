@@ -1,11 +1,13 @@
-using System;
-using System.Threading.Tasks;
 using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Tokens.Features.Generate;
+using FSH.Framework.Infrastructure.Identity.Audit;
 using FSH.Framework.Infrastructure.Identity.Users;
 using FSH.Framework.Infrastructure.Tenant;
 using MediatR;
 using Moq;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -36,16 +38,30 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         
         SetupUserManagerForSuccess(user, TestPassword);
 
+        // Setup event publishing verification for AuditPublishedEvent
+        AuditPublishedEvent? publishedEvent = null;
+        PublisherMock.Setup(x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditPublishedEvent, CancellationToken>((e, _) =>
+            {
+                publishedEvent = e;
+                Output.WriteLine($"Audit event published: {e?.GetType().Name}, UserId: {e?.Trails?.FirstOrDefault()?.UserId}");
+            })
+            .Returns(Task.CompletedTask);
+
+
         // Act
         var result = await TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None);
 
         // Assert
         AssertValidTokenResponse(result, user.Id, TestUserEmail, TestTenantId);
-        AssertTokenContainsClaim(result.Token, "email", TestUserEmail);
-        AssertTokenContainsClaim(result.Token, "sub", user.Id);
+        AssertTokenContainsClaim(result.Token, ClaimTypes.Email, TestUserEmail);
+        AssertTokenContainsClaim(result.Token, ClaimTypes.NameIdentifier, user.Id);
         AssertTokenContainsClaim(result.Token, "tenant", TestTenantId);
-        
-        VerifyTokenGeneratedEventPublished();
+
+        PublisherMock.Verify(
+            x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
     }
 
     /// <summary>
@@ -64,7 +80,7 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Usuario o contraseña incorrectos.", exception.Message);
+        Assert.Equal("authentication failed", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -88,7 +104,7 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Usuario o contraseña incorrectos.", exception.Message);
+        Assert.Equal("authentication failed", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -108,7 +124,7 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("User is not active. Please contact the administrator.", exception.Message);
+        Assert.Equal("user is deactivated", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -128,7 +144,7 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Email not confirmed. Please confirm your email before logging in.", exception.Message);
+        Assert.Equal("email not confirmed", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -141,7 +157,9 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         // Arrange
         var user = CreateTestUser();
         var request = new TokenGenerationCommand(TestUserEmail, TestPassword);
-        
+
+        SetupUserManagerForSuccess(user, TestPassword);
+
         // Set up an inactive tenant
         var tenantInfo = new FshTenantInfo
         {
@@ -154,13 +172,11 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var multiTenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
         MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
         
-        SetupUserManagerForSuccess(user, TestPassword);
-
         // Act & Assert
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Tenant is not active. Please contact the administrator.", exception.Message);
+        Assert.Equal("tenant test-tenant-1 is deactivated", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -172,8 +188,11 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+
         var request = new TokenGenerationCommand(TestUserEmail, TestPassword);
-        
+
+        SetupUserManagerForSuccess(user, TestPassword);
+
         // Set up an expired tenant
         var tenantInfo = new FshTenantInfo
         {
@@ -186,13 +205,11 @@ public class TokenServiceGenerateTokenTests : TokenServiceTestBase
         var multiTenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
         MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
         
-        SetupUserManagerForSuccess(user, TestPassword);
-
         // Act & Assert
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.GenerateTokenAsync(request, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Tenant subscription has expired. Please renew your subscription.", exception.Message);
+        Assert.Equal("tenant test-tenant-1 validity has expired", exception.Message);
         VerifyNoEventsPublished();
     }
 }

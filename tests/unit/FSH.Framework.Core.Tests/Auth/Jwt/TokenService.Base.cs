@@ -1,12 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Core.Auth.Jwt;
 using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Tokens;
@@ -17,14 +9,24 @@ using FSH.Framework.Infrastructure.Auth.Jwt;
 using FSH.Framework.Infrastructure.Identity.Tokens;
 using FSH.Framework.Infrastructure.Identity.Users;
 using FSH.Framework.Infrastructure.Tenant;
+using FSH.Framework.Infrastructure.Tenant.Persistence;
+using FSH.Starter.Shared.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using Finbuckle.MultiTenant.Abstractions;
 
 namespace FSH.Framework.Core.Tests.Auth.Jwt;
 
@@ -47,7 +49,17 @@ public abstract class TokenServiceTestBase : IDisposable
     /// Mock for IMultiTenantContextAccessor
     /// </summary>
     protected readonly Mock<IMultiTenantContextAccessor<FshTenantInfo>> MultiTenantContextAccessorMock;
-    
+
+    /// <summary>
+    /// Mock for non-generic IMultiTenantContextAccessor
+    /// </summary>
+    protected readonly Mock<IMultiTenantContextAccessor> MultiTenantContextAccessorNonGenericMock;
+
+    /// <summary>
+    /// Mock for IMultiTenantContext
+    /// </summary>
+    protected readonly Mock<IMultiTenantContext<FshTenantInfo>> MultiTenantContextMock;
+
     /// <summary>
     /// Mock for IPublisher
     /// </summary>
@@ -72,7 +84,7 @@ public abstract class TokenServiceTestBase : IDisposable
     /// <summary>
     /// Test user ID
     /// </summary>
-    protected const string TestUserId = "test-user-1";
+    protected const string TestUserId = "123e4567-e89b-12d3-a456-426614174000";
     
     /// <summary>
     /// Test user email
@@ -95,12 +107,12 @@ public abstract class TokenServiceTestBase : IDisposable
     /// <summary>
     /// Test refresh token
     /// </summary>
-    protected string TestRefreshToken = "test-refresh-token";
+    protected string TestRefreshToken = null;
     
     /// <summary>
     /// Test JWT token
     /// </summary>
-    protected string TestToken = "test-token";
+    protected string TestToken = null;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TokenServiceTestBase"/> class
@@ -117,7 +129,12 @@ public abstract class TokenServiceTestBase : IDisposable
         
         // Initialize MultiTenantContextAccessor mock
         MultiTenantContextAccessorMock = new Mock<IMultiTenantContextAccessor<FshTenantInfo>>();
-        
+        MultiTenantContextAccessorNonGenericMock = new Mock<IMultiTenantContextAccessor>();
+
+        // Initialize MultiTenantContext mock
+        MultiTenantContextMock = new Mock<IMultiTenantContext<FshTenantInfo>>();
+  
+
         // Setup tenant info
         var tenantInfo = new FshTenantInfo
         {
@@ -129,15 +146,16 @@ public abstract class TokenServiceTestBase : IDisposable
         // Create and setup tenant context
         var tenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
         MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(tenantContext);
-        
+        MultiTenantContextAccessorNonGenericMock.Setup(x => x.MultiTenantContext).Returns(tenantContext);
+
         PublisherMock = new Mock<IPublisher>();
         
         // Default JWT configuration
         JwtOptions = new JwtOptions
         {
-            Key = "super-secret-key-with-at-least-32-characters",
-            Issuer = "test-issuer",
-            Audience = "test-audience",
+            Key = "QsJbczCNysv/5SGh+U7sxedX8C07TPQPBdsnSDKZ/aE=",
+            Issuer = "https://fullstackhero.net",
+            Audience = "fullstackhero",
             TokenExpirationInMinutes = 60,
             RefreshTokenExpirationInDays = 7
         };
@@ -145,7 +163,7 @@ public abstract class TokenServiceTestBase : IDisposable
         // Generate test tokens if not already set
         if (string.IsNullOrEmpty(TestToken))
         {
-            TestToken = GenerateTestToken(JwtOptions.Key);
+            TestToken = GenerateTestToken(JwtOptions.Key, TestUserId, TestUserEmail);
         }
         
         if (string.IsNullOrEmpty(TestRefreshToken))
@@ -172,33 +190,35 @@ public abstract class TokenServiceTestBase : IDisposable
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
     }
-    
+
     /// <summary>
     /// Generates a test JWT token with the specified parameters.
     /// </summary>
     /// <param name="key">The secret key used to sign the token.</param>
     /// <param name="userId">The user ID to include in the token claims.</param>
     /// <param name="email">The email to include in the token claims.</param>
+    /// <param name="tenant"></param>
     /// <returns>A JWT token string.</returns>
-    protected static string GenerateTestToken(string key, string userId = "test-user-id", string email = "test@test.com")
+    protected static string GenerateTestToken(string key, string userId = "test-user-id", string email = "test@test.com", string tenant = "test-tenant-1")
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var keyBytes = Encoding.ASCII.GetBytes(key);
         
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, userId),
-            new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Email, email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new(FshClaims.Tenant, tenant)
         };
-        
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddMinutes(60),
-            Issuer = "TestIssuer",
-            Audience = "TestAudience",
+            Issuer = JwtAuthConstants.Issuer,
+            Audience = JwtAuthConstants.Audience,
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(keyBytes), 
                 SecurityAlgorithms.HmacSha256Signature)
@@ -206,6 +226,12 @@ public abstract class TokenServiceTestBase : IDisposable
         
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    private static class JwtAuthConstants
+    {
+        public const string Issuer = "https://fullstackhero.net";
+        public const string Audience = "fullstackhero";
     }
     
     /// <summary>
@@ -248,7 +274,11 @@ public abstract class TokenServiceTestBase : IDisposable
         var userEmail = user.Email ?? throw new ArgumentNullException(nameof(user.Email), "User email cannot be null");
         UserManagerMock.Setup(x => x.FindByEmailAsync(userEmail))
             .ReturnsAsync(user);
-            
+
+        // Configure UserManager to return the correct user ID from claims
+        UserManagerMock.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>()))
+            .Returns(user.Id);
+
         if (password != null)
         {
             UserManagerMock.Setup(x => x.CheckPasswordAsync(user, password))
@@ -263,18 +293,25 @@ public abstract class TokenServiceTestBase : IDisposable
             
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
+
+        var tenantInfo = new FshTenantInfo
+        {
+            Id = user.TenantId ?? TestTenantId,
+            Identifier = user.TenantId ?? TestTenantId,
+            Name = "Test Tenant",
+            IsActive = true,
+            ValidUpto = DateTime.UtcNow.AddDays(+1)
+        };
+        // Configurar el Mock para IMultiTenantContext
+        //var multiTenantContextMock = new Mock<IMultiTenantContext<FshTenantInfo>>();
+        MultiTenantContextMock.Setup(x => x.TenantInfo).Returns(tenantInfo);
+
+        var multiTenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
+        MultiTenantContextAccessorNonGenericMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
+        MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
+
     }
-    
-    /// <summary>
-    /// Verifies that a token generated event was published exactly once.
-    /// </summary>
-    protected void VerifyTokenGeneratedEventPublished()
-    {
-        PublisherMock.Verify(
-            x => x.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-    
+
     /// <summary>
     /// Verifies that a token refreshed event was published exactly once.
     /// </summary>

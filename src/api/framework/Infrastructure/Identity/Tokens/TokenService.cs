@@ -68,7 +68,12 @@ public sealed class TokenService : ITokenService
             }
         }
 
-        return await GenerateTokensAndUpdateUser(user, ipAddress);
+        // Obtener roles y claims personalizados del usuario
+        var roles = await _userManager.GetRolesAsync(user);
+        var userClaims = await _userManager.GetClaimsAsync(user);
+        
+        // Generar el token incluyendo roles y claims personalizados
+        return await GenerateTokensAndUpdateUser(user, ipAddress, roles, userClaims);
     }
 
 
@@ -95,9 +100,14 @@ public sealed class TokenService : ITokenService
 
         return await GenerateTokensAndUpdateUser(user, ipAddress);
     }
-    private async Task<TokenResponse> GenerateTokensAndUpdateUser(FshUser user, string ipAddress)
+    private async Task<TokenResponse> GenerateTokensAndUpdateUser(
+        FshUser user, 
+        string ipAddress,
+        IList<string>? roles = null,
+        IList<Claim>? claims = null)
     {
-        string token = GenerateJwt(user, ipAddress);
+        // Generar el token con los claims estándar, roles y claims personalizados
+        string token = GenerateJwt(user, ipAddress, roles, claims);
 
         user.RefreshToken = GenerateRefreshToken();
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenExpirationInDays);
@@ -119,8 +129,8 @@ public sealed class TokenService : ITokenService
         return new TokenResponse(token, user.RefreshToken, user.RefreshTokenExpiryTime);
     }
 
-    private string GenerateJwt(FshUser user, string ipAddress) =>
-    GenerateEncryptedToken(GetSigningCredentials(), GetClaims(user, ipAddress));
+    private string GenerateJwt(FshUser user, string ipAddress, IList<string>? roles = null, IList<Claim>? customClaims = null) =>
+        GenerateEncryptedToken(GetSigningCredentials(), GetClaims(user, ipAddress, roles, customClaims));
 
     private SigningCredentials GetSigningCredentials()
     {
@@ -141,8 +151,9 @@ public sealed class TokenService : ITokenService
         return tokenHandler.WriteToken(token);
     }
 
-    private List<Claim> GetClaims(FshUser user, string ipAddress) =>
-        new List<Claim>
+    private List<Claim> GetClaims(FshUser user, string ipAddress, IList<string>? roles = null, IList<Claim>? customClaims = null)
+    {
+        var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.NameIdentifier, user.Id),
@@ -155,6 +166,24 @@ public sealed class TokenService : ITokenService
             new(FshClaims.Tenant, _multiTenantContextAccessor!.MultiTenantContext.TenantInfo!.Id),
             new(FshClaims.ImageUrl, user.ImageUrl == null ? string.Empty : user.ImageUrl.ToString())
         };
+
+        // Agregar roles como claims
+        if (roles?.Count > 0)
+        {
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+        }
+
+        // Agregar claims personalizados si existen
+        if (customClaims?.Count > 0)
+        {
+            claims.AddRange(customClaims);
+        }
+
+        return claims;
+    }
     private static string GenerateRefreshToken()
     {
         byte[] randomNumber = new byte[32];
@@ -180,16 +209,20 @@ public sealed class TokenService : ITokenService
         };
 #pragma warning restore CA5404 // Do not disable token validation checks
         var tokenHandler = new JwtSecurityTokenHandler();
-        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
-        //if (securityToken is not JwtSecurityToken jwtSecurityToken ||
-        //    !jwtSecurityToken.Header.Alg.Equals(
-        //        SecurityAlgorithms.HmacSha256,
-        //        StringComparison.OrdinalIgnoreCase))
-        if (securityToken is not JwtSecurityToken)
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+
+            if (securityToken is not JwtSecurityToken)
+            {
+                throw new UnauthorizedException("invalid token");
+            }
+
+            return principal;
+        } 
+        catch
         {
             throw new UnauthorizedException("invalid token");
         }
-
-        return principal;
     }
 }

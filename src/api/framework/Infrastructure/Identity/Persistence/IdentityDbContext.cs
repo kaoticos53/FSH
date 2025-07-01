@@ -29,7 +29,7 @@ public class IdentityDbContext : MultiTenantIdentityDbContext<FshUser,
         TenantInfo = multiTenantContextAccessor.MultiTenantContext.TenantInfo!;
     }
 
-    public DbSet<AuditTrail> AuditTrails { get; set; }
+    public required DbSet<AuditTrail> AuditTrails { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

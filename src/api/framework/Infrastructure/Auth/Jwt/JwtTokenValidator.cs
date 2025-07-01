@@ -9,17 +9,18 @@ using Finbuckle.MultiTenant;
 using Finbuckle.MultiTenant.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using FSH.Framework.Infrastructure.Tenant;
 
 namespace FSH.Framework.Infrastructure.Auth.Jwt;
 
 public class JwtTokenValidator : IJwtTokenValidator
 {
     private readonly JwtOptions _jwtOptions;
-    private readonly IMultiTenantContextAccessor _multiTenantContextAccessor;
+    private readonly IMultiTenantContextAccessor<FshTenantInfo> _multiTenantContextAccessor;
 
     public JwtTokenValidator(
         IOptions<JwtOptions> jwtOptions,
-        IMultiTenantContextAccessor multiTenantContextAccessor)
+        IMultiTenantContextAccessor<FshTenantInfo> multiTenantContextAccessor)
     {
         _jwtOptions = jwtOptions.Value;
         _multiTenantContextAccessor = multiTenantContextAccessor;
@@ -28,9 +29,7 @@ public class JwtTokenValidator : IJwtTokenValidator
     public ClaimsPrincipal? ValidateToken(string token, bool validateLifetime = true)
     {
         if (string.IsNullOrWhiteSpace(token))
-        {
             throw new UnauthorizedException("Invalid token");
-        }
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtOptions.Key);
@@ -47,18 +46,13 @@ public class JwtTokenValidator : IJwtTokenValidator
                 ValidAudience = _jwtOptions.Audience,
                 ValidateLifetime = validateLifetime,
                 ClockSkew = TimeSpan.Zero
-            }, out var validatedToken);
+            }, out _);
 
-            // Validate tenant if multi-tenancy is enabled
             var tenantClaim = principal.FindFirst("tenant")?.Value;
-            if (!string.IsNullOrEmpty(tenantClaim))
-            {
-                var currentTenant = _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.Identifier;
-                if (currentTenant != tenantClaim)
-                {
-                    throw new UnauthorizedException("Tenant validation failed");
-                }
-            }
+            var currentTenant = _multiTenantContextAccessor.MultiTenantContext?.TenantInfo?.Identifier;
+
+            if (string.IsNullOrEmpty(tenantClaim) || currentTenant != tenantClaim)
+                throw new UnauthorizedException("Tenant validation failed");
 
             return principal;
         }
@@ -66,7 +60,11 @@ public class JwtTokenValidator : IJwtTokenValidator
         {
             throw new UnauthorizedException("The token has expired");
         }
-        catch (SecurityTokenException)
+        catch (UnauthorizedException) // Permite propagar el mensaje original de UnauthorizedException
+        {
+            throw;
+        }
+        catch (Exception)
         {
             throw new UnauthorizedException("Invalid token");
         }

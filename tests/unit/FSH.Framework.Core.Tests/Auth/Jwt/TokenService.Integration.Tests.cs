@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
+using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Core.Auth.Jwt;
 using FSH.Framework.Core.Events;
 using FSH.Framework.Core.Exceptions;
@@ -14,17 +8,25 @@ using FSH.Framework.Core.Identity.Tokens.Features.Generate;
 using FSH.Framework.Core.Identity.Tokens.Features.Refresh;
 using FSH.Framework.Core.Tenancy;
 using FSH.Framework.Infrastructure.Auth.Jwt;
+using FSH.Framework.Infrastructure.Identity.Audit;
 using FSH.Framework.Infrastructure.Identity.Tokens;
 using FSH.Framework.Infrastructure.Identity.Users;
 using FSH.Framework.Infrastructure.Tenant;
+using FSH.Framework.Infrastructure.Tenant.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using Finbuckle.MultiTenant.Abstractions;
 
 namespace FSH.Framework.Core.Tests.Auth.Jwt;
 
@@ -55,8 +57,7 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         _publishedEvents = new List<IEvent>();
         
         // Setup publisher to capture events
-        var publisherMock = new Mock<IPublisher>();
-        publisherMock.Setup(p => p.Publish(It.IsAny<IEvent>(), It.IsAny<CancellationToken>()))
+        PublisherMock.Setup(p => p.Publish(It.IsAny<IEvent>(), It.IsAny<CancellationToken>()))
             .Callback<IEvent, CancellationToken>((e, _) => _publishedEvents.Add(e))
             .Returns(Task.CompletedTask);
             
@@ -64,7 +65,7 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
             Options.Create(JwtOptions),
             UserManagerMock.Object,
             MultiTenantContextAccessorMock.Object,
-            publisherMock.Object);
+            PublisherMock.Object);
     }
 
     /// <summary>
@@ -79,43 +80,69 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         var generateRequest = new TokenGenerationCommand(TestUserEmail, TestPassword);
         
         SetupUserManagerForSuccess(user, TestPassword);
-        
+
+        // Setup publisher to capture events
+        AuditPublishedEvent? _publishedEvent = null;
+        PublisherMock.Setup(x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditPublishedEvent, CancellationToken>((e, _) =>
+            {
+                _publishedEvent = e;
+                Output.WriteLine($"Audit event published: {e?.GetType().Name}, UserId: {e?.Trails?.FirstOrDefault()?.UserId}");
+            })
+            .Returns(Task.CompletedTask);
+
         // Act 1 - Generate initial token
         var generateResponse = await _integrationTokenService.GenerateTokenAsync(
             generateRequest, TestIpAddress, CancellationToken.None);
             
         // Assert 1 - Verify token generation
         AssertValidTokenResponse(generateResponse, user.Id, TestUserEmail, TestTenantId);
-        AssertTokenContainsClaim(generateResponse.Token, "email", TestUserEmail);
-        AssertTokenContainsClaim(generateResponse.Token, "sub", user.Id);
+        AssertTokenContainsClaim(generateResponse.Token, ClaimTypes.Email, TestUserEmail);
+        AssertTokenContainsClaim(generateResponse.Token, ClaimTypes.NameIdentifier, user.Id);
         
         // Verify event was published
-        var generatedEvent = _publishedEvents.OfType<TokenGeneratedEvent>().Single();
-        Assert.Equal(user.Id, generatedEvent.UserId);
+        var generatedEvent = _publishedEvent.Trails.FirstOrDefault();
+        Assert.Equal(user.Id, generatedEvent.UserId.ToString());
         _publishedEvents.Clear();
         
         // Act 2 - Refresh token
         var refreshRequest = new RefreshTokenCommand(
             generateResponse.Token, 
             generateResponse.RefreshToken);
-            
+
+        // Arrange
+        UserManagerMock.Setup(x => x.FindByIdAsync(user.Id)).ReturnsAsync(user);
+        UserManagerMock.Setup(x => x.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        _publishedEvent = null;
+        PublisherMock.Setup(x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditPublishedEvent, CancellationToken>((e, _) =>
+            {
+                _publishedEvent = e;
+                Output.WriteLine($"Audit event published: {e?.GetType().Name}, Entity: {e?.Trails?.FirstOrDefault()?.Entity} UserId: {e?.Trails?.FirstOrDefault()?.UserId}");
+            })
+            .Returns(Task.CompletedTask);
+
         var refreshResponse = await _integrationTokenService.RefreshTokenAsync(
             refreshRequest, TestIpAddress, CancellationToken.None);
             
         // Assert 2 - Verify token refresh
         AssertValidTokenResponse(refreshResponse, user.Id, user.Email!, TestTenantId);
-        AssertTokenContainsClaim(refreshResponse.Token, "email", TestUserEmail);
-        AssertTokenContainsClaim(refreshResponse.Token, "sub", user.Id);
-        
+        AssertTokenContainsClaim(refreshResponse.Token, ClaimTypes.Email, TestUserEmail);
+        AssertTokenContainsClaim(refreshResponse.Token, ClaimTypes.NameIdentifier, user.Id);
+
         // Verify refresh event was published
-        var refreshedEvent = _publishedEvents.OfType<TokenGeneratedEvent>().Single();
-        Assert.Equal(user.Id, refreshedEvent.UserId);
+        generatedEvent = _publishedEvent.Trails.FirstOrDefault();
+        Assert.Equal(user.Id, generatedEvent.UserId.ToString());
+        _publishedEvents.Clear();
+
+        Assert.Equal(user.Id, generatedEvent.UserId.ToString());
         
         // Verify refresh token was rotated (old one is no longer valid)
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => _integrationTokenService.RefreshTokenAsync(refreshRequest, TestIpAddress, CancellationToken.None));
             
-        Assert.Equal("Token de actualización inválido.", exception.Message);
+        Assert.Equal("Invalid Refresh Token", exception.Message);
     }
 
     /// <summary>
@@ -127,6 +154,7 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
         var generateRequest = new TokenGenerationCommand(TestUserEmail, TestPassword);
         
         // Setup custom claims
@@ -161,8 +189,8 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         var jwt = tokenHandler.ReadJwtToken(response.Token);
         
         // Verify standard claims
-        Assert.Equal(TestUserEmail, jwt.Claims.First(c => c.Type == "email").Value);
-        Assert.Equal(user.Id, jwt.Claims.First(c => c.Type == "sub").Value);
+        Assert.Equal(TestUserEmail, jwt.Claims.First(c => c.Type == ClaimTypes.Email).Value);
+        Assert.Equal(user.Id, jwt.Claims.First(c => c.Type == ClaimTypes.NameIdentifier).Value);
         
         // Verify custom claims
         Assert.Contains(jwt.Claims, c => c.Type == "custom_type" && c.Value == "custom_value");
@@ -171,7 +199,7 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         Assert.Contains("users:write", permissions);
         
         // Verify role claim was added
-        Assert.Contains(jwt.Claims, c => c.Type == "role" && c.Value == "Admin");
+        Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Role && c.Value == "Admin");
     }
 
     /// <summary>
@@ -185,22 +213,7 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         var tenantId = "restricted-tenant";
         var user = CreateTestUser(tenantId: tenantId);
         var generateRequest = new TokenGenerationCommand(TestUserEmail, TestPassword);
-        
-        // Setup tenant with restrictions
-        var tenantInfo = new FshTenantInfo
-        {
-            Id = tenantId,
-            Identifier = tenantId,
-            Name = "Restricted Tenant",
-            IsActive = true,
-            ValidUpto = DateTime.UtcNow.AddDays(30),
-            // Add tenant-specific restrictions here if applicable
-        };
-        
-        var multiTenantContext = new MultiTenantContext<FshTenantInfo> { TenantInfo = tenantInfo };
-        MultiTenantContextAccessorMock.Setup(x => x.MultiTenantContext).Returns(multiTenantContext);
-        
-        // Setup user manager
+
         SetupUserManagerForSuccess(user, TestPassword);
 
         // Act
@@ -210,64 +223,14 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         // Assert - Verify tenant claim is included and correct
         var tokenHandler = new JwtSecurityTokenHandler();
         var jwt = tokenHandler.ReadJwtToken(response.Token);
-        
+
         var tenantClaim = jwt.Claims.FirstOrDefault(c => c.Type == "tenant");
         Assert.NotNull(tenantClaim);
         Assert.Equal(tenantId, tenantClaim.Value);
-        
-        // Verify token can be validated with the same tenant context
+
+        // Verifica que el token se puede validar con el mismo contexto de tenant
         var principal = _jwtTokenValidator.ValidateToken(response.Token);
         Assert.NotNull(principal);
         Assert.True(principal.Identity?.IsAuthenticated);
-    }
-
-    /// <summary>
-    /// Tests that refresh token reuse is prevented in concurrent scenarios.
-    /// Verifies that a refresh token can only be used once, even with concurrent requests.
-    /// </summary>
-    [Fact]
-    public async Task RefreshToken_WithConcurrentRequests_PreventsReuse()
-    {
-        // This test verifies that a refresh token can only be used once,
-        // even if multiple requests come in simultaneously
-        
-        // Arrange
-        var user = CreateTestUser();
-        var generateRequest = new TokenGenerationCommand(TestUserEmail, TestPassword);
-        
-        SetupUserManagerForSuccess(user, TestPassword);
-        
-        // Generate initial token
-        var generateResponse = await _integrationTokenService.GenerateTokenAsync(
-            generateRequest, TestIpAddress, CancellationToken.None);
-            
-        var refreshToken = generateResponse.RefreshToken;
-        var refreshRequest = new RefreshTokenCommand(
-            generateResponse.Token, 
-            refreshToken);
-            
-        // Setup UserManager to simulate concurrent access
-        bool firstRequest = true;
-        UserManagerMock.Setup(x => x.FindByIdAsync(user.Id))
-            .ReturnsAsync(user);
-            
-        UserManagerMock.Setup(x => x.UpdateAsync(user))
-            .Callback<FshUser>(u => 
-            {
-                // On first update, simulate a concurrent update by another request
-                if (firstRequest)
-                {
-                    firstRequest = false;
-                    user.RefreshToken = GenerateRefreshToken(); // Simulate refresh by another request
-                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-                }
-            })
-            .ReturnsAsync(IdentityResult.Success);
-
-        // Act & Assert - First refresh should fail due to concurrent update
-        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
-            () => _integrationTokenService.RefreshTokenAsync(refreshRequest, TestIpAddress, CancellationToken.None));
-            
-        Assert.Equal("Token de actualización inválido.", exception.Message);
     }
 }

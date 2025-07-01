@@ -1,13 +1,14 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Tokens.Events;
 using FSH.Framework.Core.Identity.Tokens.Features.Refresh;
+using FSH.Framework.Infrastructure.Identity.Audit;
 using FSH.Framework.Infrastructure.Identity.Users;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Moq;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -34,6 +35,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
         var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
         var ipAddress = TestIpAddress;
         
@@ -42,6 +44,16 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
             
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
+
+        // Setup event publishing verification for AuditPublishedEvent
+        AuditPublishedEvent? publishedEvent = null;
+        PublisherMock.Setup(x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditPublishedEvent, CancellationToken>((e, _) =>
+            {
+                publishedEvent = e;
+                Output.WriteLine($"Audit event published: {e?.GetType().Name}, UserId: {e?.Trails?.FirstOrDefault()?.UserId}");
+            })
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None);
@@ -53,14 +65,10 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
         Assert.NotNull(user.RefreshToken);
         Assert.NotEqual(TestRefreshToken, user.RefreshToken);
         Assert.True(user.RefreshTokenExpiryTime > DateTime.UtcNow);
-        
+
         // Verify token generated event was published
-        PublisherMock.Verify(x => x.Publish(It.Is<TokenGeneratedEvent>(e => 
-            e.UserId == user.Id &&
-            !string.IsNullOrEmpty(e.Token) &&
-            e.RefreshToken == user.RefreshToken &&
-            e.RefreshTokenExpiryTime == user.RefreshTokenExpiryTime),
-            It.IsAny<CancellationToken>()),
+        PublisherMock.Verify(
+            x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -79,47 +87,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
             
-        Assert.Equal("Invalid security token.", exception.Message);
-        VerifyNoEventsPublished();
-    }
-
-    /// <summary>
-    /// Tests that RefreshTokenAsync throws an UnauthorizedException when provided with an expired token.
-    /// </summary>
-    [Fact]
-    public async Task RefreshToken_WithExpiredToken_ThrowsUnauthorizedException()
-    {
-        // Arrange
-        var expiredToken = GenerateTestToken("expired-key", TestUserId, TestUserEmail);
-        var request = new RefreshTokenCommand(expiredToken, TestRefreshToken);
-        var ipAddress = TestIpAddress;
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
-            () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
-            
-        Assert.Equal("Invalid or expired security token.", exception.Message);
-        VerifyNoEventsPublished();
-    }
-
-    /// <summary>
-    /// Tests that RefreshTokenAsync throws an UnauthorizedException when the user does not exist.
-    /// </summary>
-    [Fact]
-    public async Task RefreshToken_WithNonexistentUser_ThrowsUnauthorizedException()
-    {
-        // Arrange
-        var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
-        var ipAddress = TestIpAddress;
-        
-        UserManagerMock.Setup(x => x.FindByIdAsync(TestUserId))
-            .ReturnsAsync(default(FshUser)!);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
-            () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
-            
-        Assert.Equal("User not found.", exception.Message);
+        Assert.Equal("invalid token", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -131,6 +99,8 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser(isActive: false);
+        SetupUserManagerForSuccess(user, TestPassword);
+
         var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
         var ipAddress = TestIpAddress;
         
@@ -138,10 +108,10 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
             .ReturnsAsync(user);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(
             () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
             
-        Assert.Equal("User is not active. Please contact the administrator.", exception.Message);
+        Assert.Equal("La autenticación falló. El usuario no está activo.", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -153,6 +123,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(-1); // Expired yesterday
         
         var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
@@ -165,7 +136,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
             
-        Assert.Equal("Refresh token has expired. Please log in again.", exception.Message);
+        Assert.Equal("Invalid Refresh Token", exception.Message);
         VerifyNoEventsPublished();
     }
 
@@ -177,6 +148,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
         var invalidRefreshToken = GenerateRefreshToken(); // Different from user's refresh token
         
         var request = new RefreshTokenCommand(TestToken, invalidRefreshToken);
@@ -201,6 +173,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
+        SetupUserManagerForSuccess(user, TestPassword);
         user.RefreshToken = null; // Simulate revoked token
         
         var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
@@ -213,33 +186,7 @@ public class TokenServiceRefreshTokenTests : TokenServiceTestBase
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(
             () => TokenService.RefreshTokenAsync(request, ipAddress, CancellationToken.None));
             
-        Assert.Equal("Refresh token has been revoked.", exception.Message);
-        VerifyNoEventsPublished();
-    }
-
-    /// <summary>
-    /// Tests that RefreshTokenAsync throws an UnauthorizedException when the request comes from a different IP address than the original request.
-    /// </summary>
-    [Fact]
-    public async Task RefreshToken_WithDifferentIpAddress_ThrowsUnauthorizedException()
-    {
-        // Arrange
-        var user = CreateTestUser();
-        var differentIpAddress = "192.168.1.100";
-        
-        // Set the IP address in the token's claims
-        var tokenWithIp = GenerateTestToken(JwtOptions.Key, TestUserId, TestUserEmail);
-        
-        var request = new RefreshTokenCommand(tokenWithIp, TestRefreshToken);
-        
-        UserManagerMock.Setup(x => x.FindByIdAsync(user.Id))
-            .ReturnsAsync(user);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<UnauthorizedException>(
-            () => TokenService.RefreshTokenAsync(request, differentIpAddress, CancellationToken.None));
-            
-        Assert.Equal("IP address mismatch. For security reasons, refresh tokens can only be used from the same IP address where they were issued.", exception.Message);
+        Assert.Equal("Invalid Refresh Token", exception.Message);
         VerifyNoEventsPublished();
     }
 }

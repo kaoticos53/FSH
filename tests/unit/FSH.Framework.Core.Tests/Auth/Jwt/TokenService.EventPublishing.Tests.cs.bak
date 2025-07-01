@@ -1,6 +1,5 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using FSH.Framework.Core.Audit;
@@ -85,34 +84,19 @@ public class TokenServiceEventPublishingTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
-        
-        // Generate a test token with the same user ID as the test user and the correct issuer/audience
-        var testToken = GenerateTestToken(JwtOptions.Key, user.Id, user.Email!);
-        Output.WriteLine($"Generated test token: {testToken}");
-        
-        // Configure UserManager to return the test user when queried by ID
+        var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
+        var ipAddress = TestIpAddress;
+
         UserManagerMock.Setup(x => x.FindByIdAsync(user.Id))
             .ReturnsAsync(user);
             
-        // Configure UserManager to return the correct user ID from claims
-        UserManagerMock.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>()))
-            .Returns(user.Id);
-            
-        // Configure UserManager to succeed on UpdateAsync
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
-            
-        var request = new RefreshTokenCommand(testToken, TestRefreshToken);
-        var ipAddress = TestIpAddress;
 
         // Setup event publishing verification for AuditPublishedEvent
         AuditPublishedEvent? publishedEvent = null;
         PublisherMock.Setup(x => x.Publish(It.IsAny<AuditPublishedEvent>(), It.IsAny<CancellationToken>()))
-            .Callback<AuditPublishedEvent, CancellationToken>((e, _) => 
-            {
-                publishedEvent = e;
-                Output.WriteLine($"Audit event published: {e?.GetType().Name}, UserId: {e?.Trails?.FirstOrDefault()?.UserId}");
-            })
+            .Callback<AuditPublishedEvent, CancellationToken>((e, _) => publishedEvent = e)
             .Returns(Task.CompletedTask);
 
         // Act
@@ -231,25 +215,14 @@ public class TokenServiceEventPublishingTests : TokenServiceTestBase
     {
         // Arrange
         var user = CreateTestUser();
-
-        // Generate a test token with the same user ID as the test user and the correct issuer/audience
-        var testToken = GenerateTestToken(JwtOptions.Key, user.Id, user.Email!);
-        Output.WriteLine($"Generated test token: {testToken}");
-
-        // Configure UserManager to return the test user when queried by ID
+        var request = new RefreshTokenCommand(TestToken, TestRefreshToken);
+        var ipAddress = TestIpAddress;
+        
         UserManagerMock.Setup(x => x.FindByIdAsync(user.Id))
             .ReturnsAsync(user);
-
-        // Configure UserManager to return the correct user ID from claims
-        UserManagerMock.Setup(x => x.GetUserId(It.IsAny<ClaimsPrincipal>()))
-            .Returns(user.Id);
-
-        // Configure UserManager to succeed on UpdateAsync
+            
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
-
-        var request = new RefreshTokenCommand(testToken, TestRefreshToken);
-        var ipAddress = TestIpAddress;
 
         // Setup event publishing to fail
         PublisherMock.Setup(x => x.Publish(It.IsAny<TokenGeneratedEvent>(), It.IsAny<CancellationToken>()))
