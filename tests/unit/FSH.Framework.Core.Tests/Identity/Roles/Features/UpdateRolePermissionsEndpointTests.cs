@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using FluentValidation;
+using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Roles;
 using FSH.Framework.Core.Identity.Roles.Features.UpdatePermissions;
 using FSH.Framework.Infrastructure.Identity.Roles.Endpoints;
@@ -112,5 +113,29 @@ public class UpdateRolePermissionsEndpointTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Debe devolver 404 NotFound cuando el servicio indica que el rol no existe.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReturnNotFound_WhenRoleDoesNotExist()
+    {
+        var roleServiceMock = new Mock<IRoleService>(MockBehavior.Strict);
+        roleServiceMock
+            .Setup(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("role not found"));
+
+        await using var app = BuildTestApp(roleServiceMock);
+        await app.StartAsync();
+        var client = app.GetTestClient();
+
+        var id = "missing-role";
+        var cmd = new UpdatePermissionsCommand { RoleId = id, Permissions = new() { "Permissions.Users.View" } };
+
+        var response = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

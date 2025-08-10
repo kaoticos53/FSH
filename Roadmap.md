@@ -23,12 +23,13 @@
 - [x] Documentar el patrón de uso de `IdentityDbContext` InMemory en los tests.
 
 ### Estado actual (2025-08-10)
-- Tests unitarios: 83/83 pasados en `FSH.Framework.Core.Tests` (NET 9, `Microsoft.EntityFrameworkCore.InMemory` 9.0.2).
+- Tests unitarios: 84/84 pasados en `FSH.Framework.Core.Tests` (NET 9, `Microsoft.EntityFrameworkCore.InMemory` 9.0.2).
 - Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
 - Cobertura añadida: test de propagación de `DbUpdateException` en `RoleService.UpdatePermissionsAsync` cuando falla `SaveChangesAsync`.
 - Infra de pruebas: helper `BuildRoleEndpointApp` en `TestFixture` para `TestServer` y pruebas de endpoint `UpdateRolePermissions`.
+- Manejo de errores en endpoint: añadido test 404 NotFound cuando el rol no existe; `BuildRoleEndpointApp` registra `CustomExceptionHandler` y `ProblemDetails` para mapear la `NotFoundException` a 404.
 - Soporte añadido: `CancellationToken` en `IRoleService.UpdatePermissionsAsync` y en el endpoint correspondiente.
 - Mejora aplicada: desduplicación y normalización (Trim + case-insensitive) de permisos en `UpdatePermissionsAsync`.
 - Validación: `UpdatePermissionsValidator` ahora valida cada elemento (no nulo ni solo whitespace) y cuenta con tests dedicados.
 - Endpoint: `UpdateRolePermissionsEndpoint` aplica `IValidator<UpdatePermissionsCommand>` y devuelve 400 (`ValidationProblem`) cuando la entrada es inválida.
-- Nuevos tests de endpoint con `Microsoft.AspNetCore.TestHost`: casos de whitespace, null, OK válido y mismatch de `id` (ruta) vs `RoleId` (cuerpo).
+- Nuevos tests de endpoint con `Microsoft.AspNetCore.TestHost`: casos de whitespace, null, OK válido, mismatch de `id` vs `RoleId` y 404 NotFound (rol inexistente).
