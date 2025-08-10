@@ -39,11 +39,15 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Nuevo test: `UpdatePermissions_ShouldBubbleUpDbUpdateException_WhenSaveChangesFails` que verifica que una `DbUpdateException` lanzada por `SaveChangesAsync` se propaga desde `RoleService.UpdatePermissionsAsync`.
 - Helper de `TestServer`: `BuildRoleEndpointApp` en `tests/unit/FSH.Framework.Core.Tests/Identity/Roles/Features/TestFixture.cs` para montar un `WebApplication` mínimo y mapear el endpoint `UpdateRolePermissions` en pruebas de integración.
- - Nuevo test de endpoint: `ShouldReturnNotFound_WhenRoleDoesNotExist` para verificar 404 cuando el servicio lanza `NotFoundException`.
- - `BuildRoleEndpointApp` ahora registra `CustomExceptionHandler` y `ProblemDetails` para mapear `NotFoundException` a 404 en `TestServer`.
+  - Nuevo test de endpoint: `ShouldReturnNotFound_WhenRoleDoesNotExist` para verificar 404 cuando el servicio lanza `NotFoundException`.
+  - `BuildRoleEndpointApp` ahora registra `CustomExceptionHandler` y `ProblemDetails` para mapear `NotFoundException` a 404 en `TestServer`.
+- Autenticación de pruebas: `TestAuthHandler` en `tests/unit/FSH.Framework.Core.Tests/Shared/TestAuthHandler.cs` para simular usuarios autenticados en pruebas de endpoints.
+- Autorización en pruebas: helper `BuildRoleEndpointAppWithAuthorization` en `tests/unit/FSH.Framework.Core.Tests/Identity/Roles/Features/TestFixture.cs` para configurar autenticación, autorización y la política `RequiredPermission`, permitiendo verificar respuestas 403.
+- Nuevo test de endpoint: `ShouldReturnForbidden_WhenUserLacksRequiredPermission` para verificar `403 Forbidden` cuando el usuario autenticado carece del permiso requerido.
+- Documentación: guía `docs/testing/EndpointAuthorization.md` sobre la cobertura de autorización y uso de `TestAuthHandler` en tests de endpoints.
 
 ### Tests
-- Confirmado: 84/84 tests de `FSH.Framework.Core.Tests` pasan correctamente en .NET 9 con `Microsoft.EntityFrameworkCore.InMemory` 9.0.2.
+- Confirmado: 85/85 tests de `FSH.Framework.Core.Tests` pasan correctamente en .NET 9 con `Microsoft.EntityFrameworkCore.InMemory` 9.0.2.
 - Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
 
 ## [2025-08-09]
