@@ -33,3 +33,5 @@
 - Validación: `UpdatePermissionsValidator` ahora valida cada elemento (no nulo ni solo whitespace) y cuenta con tests dedicados.
 - Endpoint: `UpdateRolePermissionsEndpoint` aplica `IValidator<UpdatePermissionsCommand>` y devuelve 400 (`ValidationProblem`) cuando la entrada es inválida.
 - Nuevos tests de endpoint con `Microsoft.AspNetCore.TestHost`: casos de whitespace, null, OK válido, mismatch de `id` vs `RoleId` cuerpo, 404 NotFound (rol inexistente) y 403 Forbidden (falta de permisos) usando autenticación simulada con `TestAuthHandler` y autorización con helper `BuildRoleEndpointAppWithAuthorization`.
+
+- Infra adicional de autorización en pruebas: añadido `NoAuthHandler` y helper `BuildRoleEndpointAppWithAuthorizationButNoAuth` para facilitar escenarios 401 Unauthorized documentados en `docs/testing/EndpointAuthorization.md`.

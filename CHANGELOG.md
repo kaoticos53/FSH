@@ -45,6 +45,9 @@ All notable changes to this project will be documented in this file.
 - Autorización en pruebas: helper `BuildRoleEndpointAppWithAuthorization` en `tests/unit/FSH.Framework.Core.Tests/Identity/Roles/Features/TestFixture.cs` para configurar autenticación, autorización y la política `RequiredPermission`, permitiendo verificar respuestas 403.
 - Nuevo test de endpoint: `ShouldReturnForbidden_WhenUserLacksRequiredPermission` para verificar `403 Forbidden` cuando el usuario autenticado carece del permiso requerido.
 - Documentación: guía `docs/testing/EndpointAuthorization.md` sobre la cobertura de autorización y uso de `TestAuthHandler` en tests de endpoints.
+ - Autenticación negativa de pruebas: `NoAuthHandler` en `tests/unit/FSH.Framework.Core.Tests/Shared/NoAuthHandler.cs` para simular ausencia de autenticación y provocar `401 Unauthorized` en escenarios de prueba.
+ - Autorización en pruebas (401): helper `BuildRoleEndpointAppWithAuthorizationButNoAuth` en `tests/unit/FSH.Framework.Core.Tests/Identity/Roles/Features/TestFixture.cs` para configurar autorización con `FallbackPolicy` sin autenticación efectiva y así validar respuestas `401`.
+ - Documentación actualizada: sección "401 Unauthorized con NoAuthHandler" añadida en `docs/testing/EndpointAuthorization.md` con ejemplos de registro y uso en pruebas.
 
 ### Tests
 - Confirmado: 85/85 tests de `FSH.Framework.Core.Tests` pasan correctamente en .NET 9 con `Microsoft.EntityFrameworkCore.InMemory` 9.0.2.

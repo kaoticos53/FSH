@@ -303,4 +303,58 @@ public class TestFixture : IDisposable
         app.MapUpdateRolePermissionsEndpoint();
         return app;
     }
+
+    /// <summary>
+    /// Construye una WebApplication mínima con TestServer y mapea el endpoint, incluyendo autorización PERO sin autenticación.
+    /// Útil para verificar respuestas 401 Unauthorized cuando no hay usuario autenticado.
+    /// </summary>
+    /// <param name="roleServiceMock">Mock de IRoleService a inyectar.</param>
+    /// <param name="userServiceMock">Mock de IUserService (opcional).</param>
+    /// <returns>Aplicación configurada lista para usar con TestClient.</returns>
+    public static WebApplication BuildRoleEndpointAppWithAuthorizationButNoAuth(Mock<IRoleService> roleServiceMock, Mock<IUserService>? userServiceMock = null)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development
+        });
+        builder.WebHost.UseTestServer();
+
+        builder.Services.AddRouting();
+        builder.Services.AddScoped<IValidator<UpdatePermissionsCommand>, UpdatePermissionsValidator>();
+        builder.Services.AddSingleton<IRoleService>(roleServiceMock.Object);
+        builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+        builder.Services.AddProblemDetails();
+
+        // Español: Registrar un esquema de autenticación que no autentica para provocar 401 (Challenge)
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = FSH.Framework.Core.Tests.Shared.NoAuthHandler.SchemeName;
+            options.DefaultChallengeScheme = FSH.Framework.Core.Tests.Shared.NoAuthHandler.SchemeName;
+        })
+        .AddScheme<AuthenticationSchemeOptions, FSH.Framework.Core.Tests.Shared.NoAuthHandler>(FSH.Framework.Core.Tests.Shared.NoAuthHandler.SchemeName, _ => { });
+
+        // Español: Registrar autorización con la política requerida y FallbackPolicy
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(RequiredPermissionDefaults.PolicyName, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddAuthenticationSchemes(FSH.Framework.Core.Tests.Shared.NoAuthHandler.SchemeName);
+                policy.RequireRequiredPermissions();
+            });
+            options.FallbackPolicy = options.GetPolicy(RequiredPermissionDefaults.PolicyName);
+        });
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, RequiredPermissionAuthorizationHandler>());
+
+        // Registrar IUserService (comportamiento configurable por prueba)
+        var localUserServiceMock = userServiceMock ?? new Mock<IUserService>(MockBehavior.Strict);
+        builder.Services.AddSingleton<IUserService>(localUserServiceMock.Object);
+
+        var app = builder.Build();
+        app.UseExceptionHandler();
+        // Importante: NO registrar UseAuthentication() para simular ausencia de autenticación
+        app.UseAuthorization();
+        app.MapUpdateRolePermissionsEndpoint();
+        return app;
+    }
 }

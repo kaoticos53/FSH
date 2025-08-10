@@ -18,6 +18,10 @@ Este documento describe cómo probar endpoints protegidos por permisos utilizand
     - Autorización con la política `RequiredPermission` (usa `RequiredPermissionAuthorizationHandler`).
     - Registro de `IUserService` mockeado para controlar el resultado de `HasPermissionAsync`.
     - `CustomExceptionHandler` y `ProblemDetails` para mapear excepciones de dominio a respuestas HTTP.
+  - `BuildRoleEndpointAppWithAuthorizationButNoAuth(...)` configura autorización con `FallbackPolicy` pero un esquema de autenticación que no autentica (ver `NoAuthHandler`) para provocar 401.
+
+- `tests/unit/FSH.Framework.Core.Tests/Shared/NoAuthHandler.cs`
+  - Manejador de autenticación que devuelve `NoResult` (no autentica), útil para provocar `401 Unauthorized`.
 
 ## Registro de autenticación y autorización en tests
 
@@ -87,6 +91,31 @@ public async Task ShouldReturnForbidden_WhenUserLacksRequiredPermission()
 - Español: Mantenga los identificadores en inglés y los comentarios en español, siguiendo SOLID y DDD.
 - Español: Aísle el comportamiento de autorización mockeando `IUserService` por prueba según el escenario (permitir o denegar).
 - Español: Active `CustomExceptionHandler` para mapear excepciones de dominio (por ejemplo, `NotFoundException` -> 404).
+
+## 401 Unauthorized con NoAuthHandler
+
+Para verificar respuestas 401 cuando no hay autenticación, use `NoAuthHandler` o el helper `BuildRoleEndpointAppWithAuthorizationButNoAuth`.
+
+```csharp
+// Español: Registrar NoAuthHandler para provocar 401 (Challenge) al exigir usuario autenticado
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = NoAuthHandler.SchemeName;
+    options.DefaultChallengeScheme = NoAuthHandler.SchemeName;
+})
+.AddScheme<AuthenticationSchemeOptions, NoAuthHandler>(NoAuthHandler.SchemeName, _ => { });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(RequiredPermissionDefaults.PolicyName, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddAuthenticationSchemes(NoAuthHandler.SchemeName);
+        policy.RequireRequiredPermissions();
+    });
+    options.FallbackPolicy = options.GetPolicy(RequiredPermissionDefaults.PolicyName);
+});
+```
 
 ## Referencias
 
