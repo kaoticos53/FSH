@@ -4,7 +4,7 @@ namespace FSH.Framework.Core.Authorization;
 /// Defines the claim types used in the FSH application's JWT tokens.
 /// These claims provide identity and authorization information about the authenticated user.
 /// </summary>
-public static class FSHClaims
+public static class FshClaims
 {
     /// <summary>
     /// The claim type for the tenant identifier.

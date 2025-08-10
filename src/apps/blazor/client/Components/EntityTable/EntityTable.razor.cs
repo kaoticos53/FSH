@@ -180,7 +180,7 @@ public partial class EntityTable<TEntity, TId, TRequest>
         {
             filter.AdvancedSearch = new()
             {
-                Fields = Context.SearchFields,
+                Fields = Context.GetSearchFields(),
                 Keyword = filter.Keyword
             };
             filter.Keyword = null;

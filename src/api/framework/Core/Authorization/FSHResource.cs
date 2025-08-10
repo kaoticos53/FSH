@@ -4,7 +4,7 @@ namespace FSH.Framework.Core.Authorization;
 /// Defines the resource types and default values used in the FSH application.
 /// These resources are used for authorization and configuration purposes.
 /// </summary>
-public static class FSHResource
+public static class FshResource
 {
     /// <summary>
     /// The name of the root resource or role with the highest level of access.

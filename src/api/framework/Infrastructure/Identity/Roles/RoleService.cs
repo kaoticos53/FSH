@@ -1,4 +1,4 @@
-﻿using Finbuckle.MultiTenant.Abstractions;
+using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Roles;
 using FSH.Framework.Core.Identity.Roles.Features.CreateOrUpdateRole;
@@ -13,6 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Framework.Infrastructure.Identity.Roles;
 
+/// <summary>
+/// Servicio de aplicación para la gestión de roles y sus permisos.
+/// Utiliza <see cref="RoleManager{TRole}"/>, <see cref="IdentityDbContext"/> y el contexto multi-tenant
+/// para realizar operaciones CRUD y de autorización sobre roles.
+/// </summary>
 public class RoleService(RoleManager<FshRole> roleManager,
     IdentityDbContext context,
     IMultiTenantContextAccessor<FshTenantInfo> multiTenantContextAccessor,
@@ -20,6 +25,10 @@ public class RoleService(RoleManager<FshRole> roleManager,
 {
     private readonly RoleManager<FshRole> _roleManager = roleManager;
 
+    /// <summary>
+    /// Obtiene la lista de roles disponibles.
+    /// </summary>
+    /// <returns>Lista de <see cref="RoleDto"/>.</returns>
     public async Task<IEnumerable<RoleDto>> GetRolesAsync()
     {
         return await Task.Run(() => _roleManager.Roles
@@ -27,6 +36,11 @@ public class RoleService(RoleManager<FshRole> roleManager,
             .ToList());
     }
 
+    /// <summary>
+    /// Obtiene un rol por identificador.
+    /// </summary>
+    /// <param name="id">Identificador del rol.</param>
+    /// <returns>El rol si existe; en caso contrario, <c>null</c>.</returns>
     public async Task<RoleDto?> GetRoleAsync(string id)
     {
         FshRole? role = await _roleManager.FindByIdAsync(id);
@@ -36,6 +50,11 @@ public class RoleService(RoleManager<FshRole> roleManager,
         return new RoleDto { Id = role.Id, Name = role.Name!, Description = role.Description };
     }
 
+    /// <summary>
+    /// Crea o actualiza un rol en función de su existencia.
+    /// </summary>
+    /// <param name="command">Comando con los datos del rol.</param>
+    /// <returns>El rol creado o actualizado.</returns>
     public async Task<RoleDto> CreateOrUpdateRoleAsync(CreateOrUpdateRoleCommand command)
     {
         FshRole? role = await _roleManager.FindByIdAsync(command.Id);
@@ -55,6 +74,10 @@ public class RoleService(RoleManager<FshRole> roleManager,
         return new RoleDto { Id = role.Id, Name = role.Name!, Description = role.Description };
     }
 
+    /// <summary>
+    /// Elimina un rol por su identificador.
+    /// </summary>
+    /// <param name="id">Identificador del rol.</param>
     public async Task DeleteRoleAsync(string id)
     {
         FshRole? role = await _roleManager.FindByIdAsync(id);
@@ -64,6 +87,12 @@ public class RoleService(RoleManager<FshRole> roleManager,
         await _roleManager.DeleteAsync(role);
     }
 
+    /// <summary>
+    /// Obtiene un rol junto con sus permisos (claims) asociados.
+    /// </summary>
+    /// <param name="id">Identificador del rol.</param>
+    /// <param name="cancellationToken">Token de cancelación.</param>
+    /// <returns>El rol con su lista de permisos.</returns>
     public async Task<RoleDto> GetWithPermissionsAsync(string id, CancellationToken cancellationToken)
     {
         var role = await GetRoleAsync(id);
@@ -77,7 +106,15 @@ public class RoleService(RoleManager<FshRole> roleManager,
         return role;
     }
 
-    public async Task<string> UpdatePermissionsAsync(UpdatePermissionsCommand request)
+    /// <summary>
+    /// Actualiza la lista de permisos de un rol. Filtra permisos de Root si el tenant actual no es Root.
+    /// </summary>
+    /// <param name="request">Comando que contiene el identificador del rol y la lista de permisos a establecer.</param>
+    /// <param name="cancellationToken">Token de cancelación para abortar la operación.</param>
+    /// <returns>Mensaje de confirmación.</returns>
+    /// <exception cref="NotFoundException">Si el rol no existe.</exception>
+    /// <exception cref="FshException">Si el rol es Admin o si alguna operación de eliminación de claim falla.</exception>
+    public async Task<string> UpdatePermissionsAsync(UpdatePermissionsCommand request, CancellationToken cancellationToken = default)
     {
         var role = await _roleManager.FindByIdAsync(request.RoleId);
         _ = role ?? throw new NotFoundException("role not found");
@@ -86,11 +123,24 @@ public class RoleService(RoleManager<FshRole> roleManager,
             throw new FshException("operation not permitted");
         }
 
+        // Respetar cancelación temprana
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Limpiar entradas vacías o de solo espacios en blanco
+        request.Permissions.RemoveAll(p => string.IsNullOrWhiteSpace(p));
+
         if (multiTenantContextAccessor?.MultiTenantContext?.TenantInfo?.Id != TenantConstants.Root.Id)
         {
             // Remove Root Permissions if the Role is not created for Root Tenant.
             request.Permissions.RemoveAll(u => u.StartsWith("Permissions.Root.", StringComparison.InvariantCultureIgnoreCase));
         }
+
+        // Normalizar y desduplicar permisos (recortar y Distinct case-insensitive)
+        request.Permissions = request.Permissions
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .Distinct(StringComparer.InvariantCultureIgnoreCase)
+            .ToList();
 
         var currentClaims = await _roleManager.GetClaimsAsync(role);
 
@@ -106,9 +156,10 @@ public class RoleService(RoleManager<FshRole> roleManager,
         }
 
         // Add all permissions that were not previously selected
+        var addedNewClaims = false;
         foreach (string permission in request.Permissions.Where(c => !currentClaims.Any(p => p.Value == c)))
         {
-            if (!string.IsNullOrEmpty(permission))
+            if (!string.IsNullOrWhiteSpace(permission))
             {
                 context.RoleClaims.Add(new FshRoleClaim
                 {
@@ -117,8 +168,13 @@ public class RoleService(RoleManager<FshRole> roleManager,
                     ClaimValue = permission,
                     CreatedBy = currentUser.GetUserId().ToString()
                 });
-                await context.SaveChangesAsync();
+                addedNewClaims = true;
             }
+        }
+        // Guardar cambios en lote si hubo inserciones
+        if (addedNewClaims)
+        {
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         return "permissions updated";

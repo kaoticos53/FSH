@@ -101,7 +101,10 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         AssertTokenContainsClaim(generateResponse.Token, ClaimTypes.NameIdentifier, user.Id);
         
         // Verify event was published
+        Assert.NotNull(_publishedEvent);
+        Assert.NotNull(_publishedEvent.Trails);
         var generatedEvent = _publishedEvent.Trails.FirstOrDefault();
+        Assert.NotNull(generatedEvent);
         Assert.Equal(user.Id, generatedEvent.UserId.ToString());
         _publishedEvents.Clear();
         
@@ -132,11 +135,12 @@ public class TokenServiceIntegrationTests : TokenServiceTestBase
         AssertTokenContainsClaim(refreshResponse.Token, ClaimTypes.NameIdentifier, user.Id);
 
         // Verify refresh event was published
+        Assert.NotNull(_publishedEvent);
+        Assert.NotNull(_publishedEvent.Trails);
         generatedEvent = _publishedEvent.Trails.FirstOrDefault();
+        Assert.NotNull(generatedEvent);
         Assert.Equal(user.Id, generatedEvent.UserId.ToString());
         _publishedEvents.Clear();
-
-        Assert.Equal(user.Id, generatedEvent.UserId.ToString());
         
         // Verify refresh token was rotated (old one is no longer valid)
         var exception = await Assert.ThrowsAsync<UnauthorizedException>(

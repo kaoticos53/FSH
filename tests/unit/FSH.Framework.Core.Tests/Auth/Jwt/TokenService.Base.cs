@@ -104,15 +104,12 @@ public abstract class TokenServiceTestBase : IDisposable
     /// <summary>
     /// Test refresh token
     /// </summary>
-    /// <summary>
-    /// Test refresh token
-    /// </summary>
-    protected string TestRefreshToken = null;
+    protected string TestRefreshToken;
     
     /// <summary>
     /// Test JWT token
     /// </summary>
-    protected string TestToken = null;
+    protected string TestToken;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TokenServiceTestBase"/> class

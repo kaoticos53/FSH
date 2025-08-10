@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FSH.Framework.Core.Exceptions;
 
 namespace FSH.Framework.Core.Auth.Jwt;
 

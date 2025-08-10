@@ -6,6 +6,7 @@ using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Core.Identity.Roles;
 using FSH.Framework.Core.Identity.Roles.Features.UpdatePermissions;
 using FSH.Framework.Infrastructure.Identity.Roles.Endpoints;
+using FSH.Framework.Core.Identity.Users.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -28,6 +29,33 @@ public class UpdateRolePermissionsEndpointTests
     {
         // Ahora reutilizamos el helper compartido del TestFixture para construir la app de endpoint.
         return TestFixture.BuildRoleEndpointApp(roleServiceMock);
+    }
+
+    /// <summary>
+    /// Debe devolver 403 Forbidden cuando el usuario autenticado no tiene el permiso requerido.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReturnForbidden_WhenUserLacksRequiredPermission()
+    {
+        var roleServiceMock = new Mock<IRoleService>(MockBehavior.Strict);
+        // No debe llegar a invocar el servicio por fallo de autorización
+
+        var userServiceMock = new Mock<IUserService>(MockBehavior.Strict);
+        userServiceMock
+            .Setup(s => s.HasPermissionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        await using var app = TestFixture.BuildRoleEndpointAppWithAuthorization(roleServiceMock, userServiceMock);
+        await app.StartAsync();
+        var client = app.GetTestClient();
+
+        var id = "role-403";
+        var cmd = new UpdatePermissionsCommand { RoleId = id, Permissions = new() { "Permissions.Users.View" } };
+
+        var response = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>

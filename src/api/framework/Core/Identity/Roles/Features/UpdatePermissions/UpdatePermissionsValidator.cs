@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 
 namespace FSH.Framework.Core.Identity.Roles.Features.UpdatePermissions;
 public class UpdatePermissionsValidator : AbstractValidator<UpdatePermissionsCommand>
@@ -9,5 +9,9 @@ public class UpdatePermissionsValidator : AbstractValidator<UpdatePermissionsCom
             .NotEmpty();
         RuleFor(r => r.Permissions)
             .NotNull();
+        // Validación por elemento: cada permiso debe ser no nulo y no solo espacios en blanco
+        RuleForEach(r => r.Permissions)
+            .Must(p => p is not null && !string.IsNullOrWhiteSpace(p.Trim()))
+            .WithMessage("cada permiso no debe estar vacío ni solo espacios en blanco");
     }
 }

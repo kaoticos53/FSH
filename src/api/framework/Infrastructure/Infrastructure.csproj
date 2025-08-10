@@ -1,8 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>FSH.Framework.Infrastructure</RootNamespace>
     <AssemblyName>FSH.Framework.Infrastructure</AssemblyName>
     <IsAspireSharedProject>true</IsAspireSharedProject>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Events\**" />

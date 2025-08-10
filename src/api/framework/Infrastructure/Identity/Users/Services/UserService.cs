@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Security.Claims;
 using System.Text;
 using Finbuckle.MultiTenant.Abstractions;
@@ -266,27 +266,27 @@ internal sealed partial class UserService(
             }
         }
 
-        foreach (var userRole in request.UserRoles)
+        var requestedRoles = request.UserRoles.Select(ur => ur.RoleName!).ToList();
+        var existingRoles = await roleManager.Roles.Where(r => r.Name != null && requestedRoles.Contains(r.Name)).Select(r => r.Name!).ToListAsync(cancellationToken);
+
+        foreach (var userRole in request.UserRoles.Where(ur => existingRoles.Contains(ur.RoleName!)))
         {
-            // Check if Role Exists
-            if (await roleManager.FindByNameAsync(userRole.RoleName!) is not null)
+            if (userRole.Enabled)
             {
-                if (userRole.Enabled)
+                if (!await userManager.IsInRoleAsync(user, userRole.RoleName!))
                 {
-                    if (!await userManager.IsInRoleAsync(user, userRole.RoleName!))
-                    {
-                        await userManager.AddToRoleAsync(user, userRole.RoleName!);
-                    }
+                    await userManager.AddToRoleAsync(user, userRole.RoleName!);
                 }
-                else
+            }
+            else
+            {
+                if (await userManager.IsInRoleAsync(user, userRole.RoleName!))
                 {
                     await userManager.RemoveFromRoleAsync(user, userRole.RoleName!);
                 }
             }
         }
-
         return "User Roles Updated Successfully.";
-
     }
 
     public async Task<List<UserRoleDetail>> GetUserRolesAsync(string userId, CancellationToken cancellationToken)

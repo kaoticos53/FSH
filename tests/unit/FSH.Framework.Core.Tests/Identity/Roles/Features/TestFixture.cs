@@ -13,12 +13,16 @@ using FSH.Framework.Infrastructure.Identity.Roles;
 using FSH.Framework.Infrastructure.Identity.Roles.Endpoints;
 using FSH.Framework.Infrastructure.Exceptions;
 using FSH.Framework.Infrastructure.Tenant;
+using FSH.Framework.Infrastructure.Auth.Policy;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -237,6 +241,65 @@ public class TestFixture : IDisposable
         var app = builder.Build();
         // Habilitar el middleware de manejo de excepciones para mapear NotFoundException a 404
         app.UseExceptionHandler();
+        app.MapUpdateRolePermissionsEndpoint();
+        return app;
+    }
+
+    /// <summary>
+    /// Construye una WebApplication mínima con TestServer y mapea el endpoint, incluyendo autenticación y autorización.
+    /// Permite inyectar un <see cref="IUserService"/> mock para controlar permisos y comprobar respuestas 403.
+    /// </summary>
+    /// <param name="roleServiceMock">Mock de IRoleService a inyectar.</param>
+    /// <param name="userServiceMock">Mock de IUserService (opcional). Si no se provee, se denegarán permisos por defecto.</param>
+    /// <returns>Aplicación configurada lista para usar con TestClient.</returns>
+    public static WebApplication BuildRoleEndpointAppWithAuthorization(Mock<IRoleService> roleServiceMock, Mock<IUserService>? userServiceMock = null)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development
+        });
+        builder.WebHost.UseTestServer();
+
+        builder.Services.AddRouting();
+        builder.Services.AddScoped<IValidator<UpdatePermissionsCommand>, UpdatePermissionsValidator>();
+        builder.Services.AddSingleton<IRoleService>(roleServiceMock.Object);
+        // Manejador de excepciones y ProblemDetails
+        builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+        builder.Services.AddProblemDetails();
+
+        // Autenticación de pruebas
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = FSH.Framework.Core.Tests.Shared.TestAuthHandler.SchemeName;
+            options.DefaultChallengeScheme = FSH.Framework.Core.Tests.Shared.TestAuthHandler.SchemeName;
+        })
+        .AddScheme<AuthenticationSchemeOptions, FSH.Framework.Core.Tests.Shared.TestAuthHandler>(FSH.Framework.Core.Tests.Shared.TestAuthHandler.SchemeName, _ => { });
+
+        // Autorización con política de permisos requerida (usando el esquema de pruebas)
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(RequiredPermissionDefaults.PolicyName, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddAuthenticationSchemes(FSH.Framework.Core.Tests.Shared.TestAuthHandler.SchemeName);
+                policy.RequireRequiredPermissions();
+            });
+            options.FallbackPolicy = options.GetPolicy(RequiredPermissionDefaults.PolicyName);
+        });
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<IAuthorizationHandler, RequiredPermissionAuthorizationHandler>());
+
+        // Registrar IUserService para evaluación de permisos
+        var localUserServiceMock = userServiceMock ?? new Mock<IUserService>(MockBehavior.Strict);
+        // Por defecto, denegar permisos para forzar 403 si no se configura lo contrario
+        localUserServiceMock
+            .Setup(s => s.HasPermissionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        builder.Services.AddSingleton<IUserService>(localUserServiceMock.Object);
+
+        var app = builder.Build();
+        app.UseExceptionHandler();
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapUpdateRolePermissionsEndpoint();
         return app;
     }

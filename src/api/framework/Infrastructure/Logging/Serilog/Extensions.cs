@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Serilog;
 using Serilog.Events;
 using Serilog.Filters;
@@ -23,7 +23,7 @@ public static class Extensions
                         var (key, value) = header.Split('=') switch
                         {
                         [string k, string v] => (k, v),
-                            var v => throw new Exception($"Invalid header format {v}")
+                            var v => throw new FormatException($"Invalid header format {v}")
                         };
 
                         options.Headers.Add(key, value);
@@ -33,7 +33,7 @@ public static class Extensions
                     var (otelResourceAttribute, otelResourceAttributeValue) = builder.Configuration["OTEL_RESOURCE_ATTRIBUTES"]?.Split('=') switch
                     {
                     [string k, string v] => (k, v),
-                        _ => throw new Exception($"Invalid header format {builder.Configuration["OTEL_RESOURCE_ATTRIBUTES"]}")
+                        _ => throw new FormatException($"Invalid header format {builder.Configuration["OTEL_RESOURCE_ATTRIBUTES"]}")
                     };
                     options.ResourceAttributes.Add(otelResourceAttribute, otelResourceAttributeValue);
                 }

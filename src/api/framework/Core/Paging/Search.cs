@@ -1,7 +1,7 @@
-﻿namespace FSH.Framework.Core.Paging;
+namespace FSH.Framework.Core.Paging;
 
 public class Search
 {
-    public List<string> Fields { get; set; } = new();
+    public IReadOnlyList<string> Fields { get; set; } = Array.Empty<string>();
     public string? Keyword { get; set; }
 }

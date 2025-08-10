@@ -1,4 +1,4 @@
-﻿namespace FSH.Framework.Infrastructure.Auth.Policy;
+namespace FSH.Framework.Infrastructure.Auth.Policy;
 public interface IRequiredPermissionMetadata
 {
     HashSet<string> RequiredPermissions { get; }
@@ -8,7 +8,7 @@ public interface IRequiredPermissionMetadata
 public sealed class RequiredPermissionAttribute(string? requiredPermission, params string[]? additionalRequiredPermissions)
     : Attribute, IRequiredPermissionMetadata
 {
-    public HashSet<string> RequiredPermissions { get; } = [requiredPermission!, .. additionalRequiredPermissions];
+    public HashSet<string> RequiredPermissions { get; } = [requiredPermission!, .. (additionalRequiredPermissions ?? [])];
     public string? RequiredPermission { get; }
     public string[]? AdditionalRequiredPermissions { get; }
 }

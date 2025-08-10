@@ -1,4 +1,4 @@
-﻿using FSH.Starter.Shared.Authorization;
+using FSH.Starter.Shared.Authorization;
 using MudBlazor;
 
 namespace FSH.Starter.Blazor.Client.Components.EntityTable;
@@ -14,7 +14,7 @@ public abstract class EntityTableContext<TEntity, TId, TRequest>
     /// <summary>
     /// The columns you want to display on the table.
     /// </summary>
-    public List<EntityField<TEntity>> Fields { get; }
+    public IReadOnlyList<EntityField<TEntity>> Fields { get; }
 
     /// <summary>
     /// A function that returns the Id of the entity. This is only needed when using the CRUD functionality.
@@ -65,7 +65,7 @@ public abstract class EntityTableContext<TEntity, TId, TRequest>
     public string? EntityNamePlural { get; }
 
     /// <summary>
-    /// The FSHResource that is representing this entity. This is used in combination with the xxActions to check for permissions.
+    /// The FshResource that is representing this entity. This is used in combination with the xxActions to check for permissions.
     /// </summary>
     public string? EntityResource { get; }
 
@@ -127,8 +127,8 @@ public abstract class EntityTableContext<TEntity, TId, TRequest>
     /// </summary>
     public Func<TEntity, bool>? CanDeleteEntityFunc { get; set; }
 
-    public EntityTableContext(
-        List<EntityField<TEntity>> fields,
+    protected EntityTableContext(
+        IReadOnlyList<EntityField<TEntity>> fields,
         Func<TEntity, TId>? idFunc,
         Func<Task<TRequest>>? getDefaultsFunc,
         Func<TRequest, Task>? createFunc,
@@ -188,10 +188,15 @@ public abstract class EntityTableContext<TEntity, TId, TRequest>
     // Advanced Search
     public bool AllColumnsChecked =>
         Fields.All(f => f.CheckedForSearch);
-    public void AllColumnsCheckChanged(bool checkAll) =>
-        Fields.ForEach(f => f.CheckedForSearch = checkAll);
+    public void AllColumnsCheckChanged(bool checkAll)
+    {
+        foreach (var f in Fields)
+        {
+            f.CheckedForSearch = checkAll;
+        }
+    }
     public bool AdvancedSearchEnabled =>
         ServerContext?.EnableAdvancedSearch is true;
-    public List<string> SearchFields =>
+    public ICollection<string> GetSearchFields() =>
         Fields.Where(f => f.CheckedForSearch).Select(f => f.SortLabel).ToList();
 }

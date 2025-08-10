@@ -102,7 +102,7 @@ public class TokenServiceEventPublishingTests : TokenServiceTestBase
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
             
-        var request = new RefreshTokenCommand(testToken, TestRefreshToken);
+                var request = new RefreshTokenCommand(testToken, TestRefreshToken);
         var ipAddress = TestIpAddress;
 
         // Setup event publishing verification for AuditPublishedEvent
@@ -248,7 +248,7 @@ public class TokenServiceEventPublishingTests : TokenServiceTestBase
         UserManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
 
-        var request = new RefreshTokenCommand(testToken, TestRefreshToken);
+                var request = new RefreshTokenCommand(testToken, TestRefreshToken);
         var ipAddress = TestIpAddress;
 
         // Setup event publishing to fail
