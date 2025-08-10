@@ -123,6 +123,26 @@ public class UpdateRolePermissionsEndpointTests
     }
 
     /// <summary>
+    /// Debe devolver 401 Unauthorized cuando no hay autenticación configurada.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReturnUnauthorized_WhenUserIsNotAuthenticated()
+    {
+        var roleServiceMock = new Mock<IRoleService>(MockBehavior.Strict);
+        await using var app = TestFixture.BuildRoleEndpointAppWithAuthorizationButNoAuth(roleServiceMock);
+        await app.StartAsync();
+        var client = app.GetTestClient();
+
+        var id = "role-401";
+        var cmd = new UpdatePermissionsCommand { RoleId = id, Permissions = new() { "Permissions.Users.View" } };
+
+        var response = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
     /// Debe devolver 400 cuando el id de la ruta no coincide con el RoleId del cuerpo.
     /// </summary>
     [Fact]
@@ -166,4 +186,57 @@ public class UpdateRolePermissionsEndpointTests
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    /// <summary>
+    /// Debe ser idempotente a nivel de endpoint: dos peticiones con el mismo payload devuelven 200 OK.
+    /// Nota: la idempotencia lógica ya está probada en RoleService; aquí validamos el comportamiento del endpoint.
+    /// </summary>
+    [Fact]
+    public async Task ShouldBeIdempotent_WhenSamePermissionsSentTwice()
+    {
+        var roleServiceMock = new Mock<IRoleService>(MockBehavior.Strict);
+        roleServiceMock
+            .Setup(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("permissions updated");
+
+        await using var app = BuildTestApp(roleServiceMock);
+        await app.StartAsync();
+        var client = app.GetTestClient();
+
+        var id = "role-idem";
+        var cmd = new UpdatePermissionsCommand { RoleId = id, Permissions = new() { "Permissions.Users.View", "Permissions.Users.Edit" } };
+
+        var first = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+        var second = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.Is<UpdatePermissionsCommand>(r => r.RoleId == id), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    /// <summary>
+    /// Debe devolver 500 Internal Server Error cuando ocurre una excepción no controlada en el servicio.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReturnInternalServerError_WhenUnhandledExceptionOccurs()
+    {
+        var roleServiceMock = new Mock<IRoleService>(MockBehavior.Strict);
+        roleServiceMock
+            .Setup(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("boom"));
+
+        await using var app = BuildTestApp(roleServiceMock);
+        await app.StartAsync();
+        var client = app.GetTestClient();
+
+        var id = "role-500";
+        var cmd = new UpdatePermissionsCommand { RoleId = id, Permissions = new() { "Permissions.Users.View" } };
+
+        var response = await client.PutAsJsonAsync($"/{id}/permissions", cmd);
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        roleServiceMock.Verify(s => s.UpdatePermissionsAsync(It.IsAny<UpdatePermissionsCommand>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
 }

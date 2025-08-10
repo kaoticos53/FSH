@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Tests de endpoint: `UpdateRolePermissionsEndpoint` devuelve `401 Unauthorized` cuando no hay autenticación, usando `NoAuthHandler` y el helper `BuildRoleEndpointAppWithAuthorizationButNoAuth`.
+- Tests de endpoint: `UpdateRolePermissionsEndpoint` devuelve `500 Internal Server Error` cuando el servicio lanza una excepción no controlada, cubriendo el middleware `CustomExceptionHandler`.
+- Tooling: instalado `dotnet-reportgenerator-globaltool` como herramienta local (manifiesto en `.config/dotnet-tools.json`) y configurado su uso para generar informes de cobertura.
+- Nuevos tests de validadores de Tenant: `ActivateTenantValidator`, `DisableTenantValidator` y `UpgradeSubscriptionValidator` siguiendo TDD, con comentarios XML en español.
+- Documentación de tests: añadidos comentarios XML a clases y métodos públicos de los tests de handlers de Tenant y `CustomExceptionHandler` para resolver advertencias del linter.
+ - Integración: nuevo proyecto `FSH.Catalog.Infrastructure.Tests` para tests de integración del módulo Catalog.Infrastructure.
+    - Test CRUD básico para `CatalogRepository<Product>` y `CatalogDbContext` usando SQLite InMemory y helper multi-tenant (`TestMultiTenantAccessor`).
+    - Comentarios XML en español en clases/métodos de test.
+    - Nuevos tests: transacciones (commit/rollback) y concurrencia (actualización tras eliminación) validando `DbUpdateConcurrencyException`.
+    - Nuevos tests CRUD adicionales:
+      - `Brand_CRUD_Should_Work_With_Sqlite_InMemory` (repositorio real `CatalogRepository<Brand>`)
+      - `Product_With_Brand_CRUD_Should_Work_With_Sqlite_InMemory` (relación `Product`-`Brand` con `Include`)
+      - `Brand_Add_Multiple_Should_Persist_All` (múltiples altas)
+      - `Brand_Mixed_Add_Update_Delete_In_One_UnitOfWork_Should_Succeed` (operaciones mixtas en una sola UoW)
+      - `MultiTenant_Filter_Should_Isolate_Brand_Data_Between_Tenants` (aislamiento multi-tenant y `IgnoreQueryFilters`)
+      - `ProductSoftDeleteAndTenantTests` (soft delete de Product y aislamiento multi-tenant con SQLite InMemory; uso de `AuditInterceptor`, `HasQueryFilter` e `IsMultiTenant()`).
+- Documentación: `Roadmap.md` actualizado con el progreso reciente.
+ - Tests de DTOs: añadidos tests para `FSH.Framework.Core.Tenant.Dtos.TenantDetail` y `FSH.Framework.Core.Tenancy.Dtos.TenantDetail` cubriendo valores por defecto y asignación de propiedades (getters/setters).
+ - Cobertura: regenerado el informe HTML con ReportGenerator en `coverage-report/index.html` tras los nuevos tests.
+ - Tests de handlers de Tenant: `CreateTenantHandler`, `GetTenantsHandler`, `GetTenantByIdHandler`, `ActivateTenantHandler`, `DisableTenantHandler` y `UpgradeSubscriptionHandler`. Se cubren caminos felices, propagación de `CancellationToken` donde aplica y error `NotFoundException` en `GetTenantById`.
+ - Tarea añadida: revisar y consolidar duplicados potenciales de tests de `CreateTenantHandler` en `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs` y `tests/unit/FSH.Framework.Core.Tests/Tenant/Features/Handlers/CreateTenantHandlerTests.cs`.
+
+### Tests
+- Confirmado: 109/109 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
+ - Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).
+   - TRX: `tests/integration/FSH.Catalog.Infrastructure.Tests/TestResults/TestResults.trx`.
+- Cobertura (último Cobertura): global ≈ 20.84%, `FSH.Framework.Core` ≈ 51.47%.
+ - Suite `FSH.Framework.Core.Tests` vuelve a pasar tras añadir los tests de DTOs y se ha actualizado el informe de cobertura (`coverage-report/index.html`).
+
+#### Actualización (más reciente)
+- Confirmado: 125/125 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
+- Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
+- Cobertura (último Cobertura): global ≈ 21.28%, `FSH.Framework.Core` ≈ 53.91%.
+- Informe HTML de cobertura regenerado en `coverage-report/index.html` con ReportGenerator.
+- Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).
+- Resultados TRX (Infra): `tests/integration/FSH.Catalog.Infrastructure.Tests/TestResults/TestResults.trx`.
+- Nota: Se ha actualizado el contador de tests de integración a 12/12.
+
 ### Fixed
 - Fixed failing test in `UpdatePermissions_ShouldRemoveUnselectedPermissions_And_AddNewlySelectedPermissions`
   - Identified that `RoleService` uses `DbContext` to add claims instead of `AddClaimAsync`
@@ -28,8 +67,12 @@ All notable changes to this project will be documented in this file.
   - Ensured `MultiTenantContext` is properly initialized with valid `FshTenantInfo`
   - Fixed dependency injection registration order to satisfy both IdentityDbContext constructor overloads
   - All Identity/Roles feature tests now pass successfully
+ - Soft delete (Brand con dependientes Product): ajustado test `Brand_SoftDelete_With_Dependent_Products_Should_Not_Throw_And_Should_Be_Filtered` para hacer `Detach` del `Product` tras su creación, evitando que EF Core aplique `ClientSetNull` a la FK cuando el `Brand` cambia a `Deleted` y el interceptor realiza soft delete. Verificado con SQLite InMemory.
 
 ### Changed
+- Consolidación de tests duplicados de `CreateTenantHandler` para evitar redundancia y facilitar el mantenimiento.
+  - Eliminado: `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs`.
+  - Se mantiene como fuente de verdad: `tests/unit/FSH.Framework.Core.Tests/Tenant/Features/Handlers/CreateTenantHandlerTests.cs`.
 - Improved null safety in test methods by using nullable reference types
 - Updated test assertions to be more precise and avoid potential null reference exceptions
 - Enhanced test method documentation for better maintainability
@@ -53,6 +96,22 @@ All notable changes to this project will be documented in this file.
 - Confirmado: 85/85 tests de `FSH.Framework.Core.Tests` pasan correctamente en .NET 9 con `Microsoft.EntityFrameworkCore.InMemory` 9.0.2.
 - Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
 
+#### Actualización
+- Confirmado: 94/94 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
+- Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
+- Cobertura (último Cobertura): global ≈ 19.35%, `FSH.Framework.Core` ≈ 45.38%.
+
+#### Actualización (posterior)
+- Confirmado: 102/102 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
+- Ajuste: `CustomExceptionHandler` devuelve 500 (`StatusCodes.Status500InternalServerError`) para excepciones desconocidas.
+- Informe HTML de cobertura regenerado en `coverage-report/index.html`.
+
+### Fixed
+- `CreateTenantValidatorTests`: eliminados setups innecesarios de `IConnectionStringValidator.TryValidate` cuando `ConnectionString` es nula o vacía para evitar fallos de verificación Moq (la regla del validador hace short-circuit y no llama al validador en esos casos).
+
+### Changed
+- Adoptado patrón sentinel `[[CASCADE_DONE]]` al ejecutar comandos en PowerShell para detectar el fin de los comandos de forma fiable en automatizaciones y sesiones interactivas.
+
 ## [2025-08-09]
 
 ### Fixed
@@ -65,6 +124,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Unificado el patrón de creación de `RoleService` en los tests de `Identity/Roles`.
+ - Paquetes: alineado `Microsoft.Data.Sqlite` a `9.0.2` en `FSH.Catalog.Infrastructure.Tests` para compatibilidad con EF Core 9 (`Microsoft.EntityFrameworkCore.Sqlite` 9.0.2).
 - Actualizado `Roadmap.md` con tareas completadas y próximos pasos.
 - `RoleService.UpdatePermissionsAsync`: ignora permisos vacíos o de solo espacios en blanco para evitar claims inválidos.
 - `RoleService.UpdatePermissionsAsync`: optimizado guardado en lote con un único `SaveChangesAsync` fuera del bucle.

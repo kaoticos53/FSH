@@ -1,4 +1,4 @@
-﻿using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Core.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -40,6 +40,7 @@ public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IE
 
         else
         {
+            httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
             problemDetails.Detail = exception.Message;
         }
 
