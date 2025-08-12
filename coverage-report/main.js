@@ -213,8 +213,12 @@ var assemblies = [
   {
     "name": "FSH.Framework.Core",
     "classes": [
+      { "name": "FSH.Framework.Core.Audit.AuditStatsSummaryDto", "rp": "FSH.Framework.Core_AuditStatsSummaryDto.html", "cl": 0, "ucl": 6, "cal": 6, "tl": 26, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Core.Audit.AuditTimeseriesPointDto", "rp": "FSH.Framework.Core_AuditTimeseriesPointDto.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 26, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Core.Audit.AuditTrail", "rp": "FSH.Framework.Core_AuditTrail.html", "cl": 5, "ucl": 4, "cal": 9, "tl": 55, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Core.Audit.EntityCountDto", "rp": "FSH.Framework.Core_EntityCountDto.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 26, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Core.Audit.TrailDto", "rp": "FSH.Framework.Core_TrailDto.html", "cl": 0, "ucl": 28, "cal": 28, "tl": 82, "cb": 0, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Core.Audit.UserCountDto", "rp": "FSH.Framework.Core_UserCountDto.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 26, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Core.Auth.Jwt.JwtOptions", "rp": "FSH.Framework.Core_JwtOptions.html", "cl": 5, "ucl": 14, "cal": 19, "tl": 62, "cb": 0, "tb": 6, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Core.Caching.CacheOptions", "rp": "FSH.Framework.Core_CacheOptions.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 14, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Core.Caching.CacheServiceExtensions", "rp": "FSH.Framework.Core_CacheServiceExtensions.html", "cl": 0, "ucl": 24, "cal": 24, "tl": 67, "cb": 0, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
@@ -322,8 +326,10 @@ var assemblies = [
       { "name": "FSH.Framework.Infrastructure.Identity.Audit.AuditPublishedEvent", "rp": "FSH.Framework.Infrastructure_AuditPublishedEvent.html", "cl": 5, "ucl": 0, "cal": 5, "tl": 13, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Audit.AuditPublishedEventHandler", "rp": "FSH.Framework.Infrastructure_AuditPublishedEventHandler.html", "cl": 0, "ucl": 14, "cal": 14, "tl": 24, "cb": 0, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Audit.AuditService", "rp": "FSH.Framework.Infrastructure_AuditService.html", "cl": 0, "ucl": 9, "cal": 9, "tl": 17, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Infrastructure.Identity.Audit.AuditStatsService", "rp": "FSH.Framework.Infrastructure_AuditStatsService.html", "cl": 0, "ucl": 53, "cal": 53, "tl": 81, "cb": 0, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Infrastructure.Identity.Audit.Endpoints.AuditStatsEndpoints", "rp": "FSH.Framework.Infrastructure_AuditStatsEndpoints.html", "cl": 0, "ucl": 21, "cal": 21, "tl": 40, "cb": 0, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Audit.Endpoints.GetUserAuditTrailEndpoint", "rp": "FSH.Framework.Infrastructure_GetUserAuditTrailEndpoint.html", "cl": 0, "ucl": 10, "cal": 10, "tl": 22, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FSH.Framework.Infrastructure.Identity.Extensions", "rp": "FSH.Framework.Infrastructure_Extensions.5.html", "cl": 0, "ucl": 33, "cal": 33, "tl": 66, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Framework.Infrastructure.Identity.Extensions", "rp": "FSH.Framework.Infrastructure_Extensions.5.html", "cl": 0, "ucl": 40, "cal": 40, "tl": 71, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Persistence.ApplicationRoleClaimConfig", "rp": "FSH.Framework.Infrastructure_ApplicationRoleClaimConfig.html", "cl": 3, "ucl": 0, "cal": 3, "tl": 86, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Persistence.ApplicationRoleConfig", "rp": "FSH.Framework.Infrastructure_ApplicationRoleConfig.html", "cl": 4, "ucl": 0, "cal": 4, "tl": 86, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Framework.Infrastructure.Identity.Persistence.ApplicationUserConfig", "rp": "FSH.Framework.Infrastructure_ApplicationUserConfig.html", "cl": 8, "ucl": 0, "cal": 8, "tl": 86, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
@@ -416,7 +422,7 @@ var assemblies = [
     "name": "Shared",
     "classes": [
       { "name": "FSH.Starter.Shared.Authorization.AppConstants", "rp": "Shared_AppConstants.html", "cl": 0, "ucl": 10, "cal": 10, "tl": 35, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FSH.Starter.Shared.Authorization.ClaimsPrincipalExtensions", "rp": "Shared_ClaimsPrincipalExtensions.html", "cl": 4, "ucl": 12, "cal": 16, "tl": 98, "cb": 2, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FSH.Starter.Shared.Authorization.ClaimsPrincipalExtensions", "rp": "Shared_ClaimsPrincipalExtensions.html", "cl": 4, "ucl": 12, "cal": 16, "tl": 98, "cb": 3, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Starter.Shared.Authorization.FshPermission", "rp": "Shared_FshPermission.html", "cl": 0, "ucl": 5, "cal": 5, "tl": 116, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Starter.Shared.Authorization.FshPermissions", "rp": "Shared_FshPermissions.html", "cl": 0, "ucl": 58, "cal": 58, "tl": 116, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FSH.Starter.Shared.Authorization.FshRoles", "rp": "Shared_FshRoles.html", "cl": 0, "ucl": 6, "cal": 6, "tl": 35, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
@@ -548,13 +554,13 @@ var riskHotspots = [
       { "value": 16, "exceeded": true },
     ]},
   {
-    "assembly": "FSH.Starter.Aspire.ServiceDefaults", "class": "FSH.Starter.Aspire.ServiceDefaults.Extensions", "reportPath": "FSH.Starter.Aspire.ServiceDefaults_Extensions.html", "methodName": "ConfigureOpenTelemetry(Microsoft.Extensions.Hosting.IHostApplicationBuilder)", "methodShortName": "ConfigureOpenTelemetry(...)", "fileIndex": 0, "line": 45,
+    "assembly": "FSH.Starter.Aspire.ServiceDefaults", "class": "FSH.Starter.Aspire.ServiceDefaults.Extensions", "reportPath": "FSH.Starter.Aspire.ServiceDefaults_Extensions.html", "methodName": "ConfigureOpenTelemetry(Microsoft.Extensions.Hosting.IHostApplicationBuilder)", "methodShortName": "ConfigureOpenTelemetry(...)", "fileIndex": 0, "line": 40,
     "metrics": [
       { "value": 272, "exceeded": true },
       { "value": 16, "exceeded": true },
     ]},
   {
-    "assembly": "FSH.Starter.Aspire.ServiceDefaults", "class": "FSH.Starter.Aspire.ServiceDefaults.Extensions", "reportPath": "FSH.Starter.Aspire.ServiceDefaults_Extensions.html", "methodName": "ConfigureOpenTelemetry(Microsoft.Extensions.Hosting.IHostApplicationBuilder)", "methodShortName": "ConfigureOpenTelemetry(...)", "fileIndex": 0, "line": 40,
+    "assembly": "FSH.Starter.Aspire.ServiceDefaults", "class": "FSH.Starter.Aspire.ServiceDefaults.Extensions", "reportPath": "FSH.Starter.Aspire.ServiceDefaults_Extensions.html", "methodName": "ConfigureOpenTelemetry(Microsoft.Extensions.Hosting.IHostApplicationBuilder)", "methodShortName": "ConfigureOpenTelemetry(...)", "fileIndex": 0, "line": 45,
     "metrics": [
       { "value": 272, "exceeded": true },
       { "value": 16, "exceeded": true },
@@ -759,6 +765,12 @@ var riskHotspots = [
     ]},
   {
     "assembly": "FSH.Framework.Infrastructure", "class": "FSH.Framework.Infrastructure.Auth.Jwt.JwtTokenGenerator", "reportPath": "FSH.Framework.Infrastructure_JwtTokenGenerator.html", "methodName": "GenerateToken(System.String,System.String,System.Collections.Generic.IList`1<System.Security.Claims.Claim>,System.String)", "methodShortName": "GenerateToken(...)", "fileIndex": 0, "line": 22,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
+    ]},
+  {
+    "assembly": "FSH.Framework.Infrastructure", "class": "FSH.Framework.Infrastructure.Identity.Audit.AuditStatsService", "reportPath": "FSH.Framework.Infrastructure_AuditStatsService.html", "methodName": "GetTimeseriesAsync()", "methodShortName": "GetTimeseriesAsync()", "fileIndex": 0, "line": 49,
     "metrics": [
       { "value": 42, "exceeded": true },
       { "value": 6, "exceeded": false },
