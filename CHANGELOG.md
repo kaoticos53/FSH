@@ -37,6 +37,9 @@ All notable changes to this project will be documented in this file.
   - Documentación de despliegue creada en `docs/deployment/proxmox-docker.md`.
   - Documentación de despliegue actualizada: sección de migración y seed automáticos, curl para `/health`, `/alive` y `POST /api/token`, y ejemplo de creación de tenant `POST /api/tenants`.
 
+  - CI: añadido workflow `CI` en `.github/workflows/ci.yml` que ejecuta `./scripts/test-coverage.ps1` con umbral de cobertura del 90%, publica `coverage-report` y TRX como artefactos, y realiza smoke tests de Docker Compose verificando `GET /health`, `GET /alive` y respuesta 200 del Blazor Client.
+  - Tooling: el script `scripts/test-coverage.ps1` se integra en CI y utiliza `dotnet tool restore` para ejecutar `reportgenerator` desde el manifiesto local `.config/dotnet-tools.json` (versión 5.4.12).
+
 ### Tests
 - Confirmado: 109/109 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
 - Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).

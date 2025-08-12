@@ -8,8 +8,7 @@ WORKDIR /src
 COPY . .
 
 # Restaurar dependencias y publicar
-RUN dotnet restore ./api/server/Server.csproj -c Release \
- && dotnet publish ./api/server/Server.csproj -c Release -o /app/out /p:UseAppHost=false
+RUN dotnet restore ./api/server/Server.csproj && dotnet publish ./api/server/Server.csproj -c Release -o /app/out /p:UseAppHost=false /p:PublishProfile=Default
 
 # Etapa final de runtime
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime

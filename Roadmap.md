@@ -51,14 +51,6 @@
 - Mejora aplicada: desduplicación y normalización (Trim + case-insensitive) de permisos en `UpdatePermissionsAsync`.
 - Validación: `UpdatePermissionsValidator` ahora valida cada elemento (no nulo ni solo whitespace) y cuenta con tests dedicados.
 - Endpoint: `UpdateRolePermissionsEndpoint` aplica `IValidator<UpdatePermissionsCommand>` y devuelve 400 (`ValidationProblem`) cuando la entrada es inválida.
-- Nuevos tests de validadores: `ActivateTenantValidator`, `DisableTenantValidator` y `UpgradeSubscriptionValidator` (TDD), con comentarios XML en español.
-- Nuevos tests de endpoint con `Microsoft.AspNetCore.TestHost`: casos de whitespace, null, OK válido, mismatch de `id` vs `RoleId` cuerpo, 404 NotFound (rol inexistente) y 403 Forbidden (falta de permisos) usando autenticación simulada con `TestAuthHandler` y autorización con helper `BuildRoleEndpointAppWithAuthorization`.
-
-- Infra adicional de autorización en pruebas: añadido `NoAuthHandler` y helper `BuildRoleEndpointAppWithAuthorizationButNoAuth` para facilitar escenarios 401 Unauthorized documentados en `docs/testing/EndpointAuthorization.md`.
-
-- DTOs cubiertos: añadidos tests para `Core.Tenant.Dtos.TenantDetail` y `Core.Tenancy.Dtos.TenantDetail` (valores por defecto y setters/getters).
-- Informe HTML de cobertura regenerado: `coverage-report/index.html` y `coverage-report/summary.html` tras los nuevos tests.
-- Handlers de Tenant cubiertos con tests: `Create`, `Get`, `GetById`, `Activate`, `Disable`, `UpgradeSubscription` (caminos felices, propagación de `CancellationToken` cuando aplica y NotFound en `GetById`).
 
 - Correcciones tests Tenant: en `CreateTenantValidatorTests` se eliminaron setups innecesarios de `IConnectionStringValidator.TryValidate` cuando `ConnectionString` es nula o vacía (la regla hace short-circuit); esto resolvió fallos de verificación Moq.
 - Ejecución de comandos: adoptado patrón sentinel `[[CASCADE_DONE]]` para detectar fin de comandos en PowerShell de forma fiable.
@@ -114,8 +106,9 @@
   - [ ] Shared: helpers/utilidades puras.
 
 - [ ] Tooling / CI / Docs
-  - [ ] Añadir `dotnet-reportgenerator-globaltool` y script `scripts/test-coverage.ps1`.
-  - [ ] Gating de cobertura en CI a 90%.
+  - [x] Crear script `scripts/test-coverage.ps1`.
+  - [x] Añadir `dotnet-reportgenerator-globaltool` como herramienta local (`.config/dotnet-tools.json`) y usarlo para generar reportes.
+  - [x] Gating de cobertura en CI a 90%.
   - [ ] Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`.
 
 ## Hito 3: Arquitectura, Observabilidad y Seguridad
@@ -207,7 +200,7 @@
 
 ## Tooling / CI adicionales
 
-- [ ] Workflows en `.github/workflows` con gating de cobertura ≥90% y publicación de reportes HTML como artefacto.
+- [x] Workflows en `.github/workflows` con gating de cobertura ≥90% y publicación de reportes HTML como artefacto.
 - [ ] `dotnet format` y analizadores (FxCop/StyleCop) activados en `.csproj`.
 - [ ] CodeQL/Dependabot y auditoría de vulnerabilidades NuGet.
 - [ ] Scripts: `scripts/test-coverage.ps1`, `scripts/dev-setup.ps1`.
