@@ -100,3 +100,116 @@
   - [ ] Añadir `dotnet-reportgenerator-globaltool` y script `scripts/test-coverage.ps1`.
   - [ ] Gating de cobertura en CI a 90%.
   - [ ] Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`.
+
+## Hito 3: Arquitectura, Observabilidad y Seguridad
+
+- __Observabilidad (OpenTelemetry + Serilog)__
+  - [ ] Integrar OpenTelemetry (tracing/metrics/logs) en `src/api/server/Program.cs` y `src/api/framework/Infrastructure/Logging/Serilog/`.
+  - [ ] Propagar `TraceId`/`TenantId` en logs y respuestas (correlación) usando `StaticLogger` y middlewares.
+  - [ ] Instrumentar EF Core (ActivitySource/diagnostics) y `HttpClient`.
+  - [ ] Añadir HealthChecks UI y cubrir `Infrastructure/HealthChecks/HealthCheckEndpoint` y `HealthCheckMiddleware` con tests.
+
+- __Seguridad y autorización__
+  - [ ] Rotación de claves JWT y validación end-to-end del flujo de refresh tokens.
+  - [ ] Tests de endpoint para `Users` y `Tokens` (200/400/401/403/404/422/500) en `Infrastructure.Identity.Users.Endpoints.*` y `Infrastructure.Identity.Tokens.Endpoints.*`.
+  - [ ] Cobertura completa de `RequiredPermissionAuthorizationHandler` y políticas por endpoint (Catalog/Todo).
+  - [ ] Planificación de 2FA y recuperación de cuenta (documentar alcance y dependencias).
+
+- __Versionado y OpenAPI__
+  - [ ] Versionado de API v1 en `src/api/server/Extensions.cs` y `Infrastructure/OpenApi/*` (agrupación de endpoints, example providers).
+  - [ ] Documentar permisos por endpoint y añadir ejemplos en `Server.http`.
+
+- __Rate limiting y cabeceras de seguridad__
+  - [ ] Configurar `RateLimit` por tenant y por usuario con pruebas de límites y cabeceras `Retry-After`.
+  - [ ] Completar `SecurityHeaders` (CSP, HSTS, X-Content-Type-Options) y tests de middleware/policies.
+
+## Hito 4: Funcionalidades de negocio (Módulo Catalog)
+
+- __Entidades y relaciones__
+  - [ ] `Category` y relación N:N `ProductCategory`; endpoints y validadores en `Catalog.Application`/`Catalog.Infrastructure.Endpoints`.
+  - [ ] `ProductImage` con almacenamiento en `Infrastructure/Storage` y endpoints de subida (validación tamaño/tipo, antivirus opcional).
+  - [ ] `Inventory` y `StockMovement` con `ProductStockChangedEvent` (Domain Event) y handlers.
+  - [ ] `Price` multi-moneda (`Currency`) con reglas de consistencia.
+
+- __Búsqueda y filtros__
+  - [ ] Especificaciones avanzadas (filtros/ordenación/paginación) y tests sobre `CatalogRepository`.
+  - [ ] Búsqueda facetada o full-text (si aplica) y caching de resultados con invalidación por eventos.
+
+- __Eventos y outbox__
+  - [ ] Publicar eventos en creación/actualización (MediatR Domain Events).
+  - [ ] Implementar patrón Outbox en `Infrastructure/Persistence` y dispatcher en `Infrastructure/Jobs`.
+  - [ ] Pruebas de idempotencia y entrega al menos una vez.
+
+- __Soft delete avanzado__
+  - [ ] Endpoint de "restore" para `Brand`/`Product` y tests que verifiquen `HasQueryFilter` y auditoría.
+  - [ ] Hard delete administrativo con registro en `AuditTrail`.
+
+## Hito 5: Módulo Todo y Experiencia de usuario (API)
+
+- __Dominio y features__
+  - [ ] `TodoList` y `TodoItem` con `Assignee`, `DueDate`, `Reminder`, `Comment`.
+  - [ ] Commands/Queries y validadores siguiendo Vertical Slice.
+  - [ ] Endpoints en `TodoModule` y tests de endpoint (200/400/401/403/404/422/500).
+
+- __Notificaciones y tiempo real__
+  - [ ] Notificaciones con SignalR (cambios en tareas/listas) con autorización por hub.
+
+- __Productividad__
+  - [ ] Filtros, ordenación y paginación en endpoints.
+
+## Hito 6: Rendimiento, Escalabilidad y Datos
+
+- __EF Core y base de datos__
+  - [ ] `AsNoTracking`/consultas compiladas en lecturas; batching de cambios; uso de `SaveChanges` optimizado.
+  - [ ] Índices y constraints críticos; migraciones automatizadas y seeding multi-tenant en `DbInitializer`.
+
+- __Conexiones y resiliencia__
+  - [ ] Resiliencia (reintentos/timeouts) y connection pooling.
+
+- __Jobs y procesos diferidos__
+  - [ ] Configurar `Infrastructure/Jobs` (Hangfire) con colas por tenant; tests de activator y filtros.
+
+- __Caching distribuido__
+  - [ ] `DistributedCacheService` con backplane (Redis), expiraciones y políticas; invalidación por eventos de dominio.
+
+## Backlog técnico (Cobertura y calidad por área)
+
+- [ ] `Auth.CurrentUserMiddleware`
+- [ ] `Auth.Jwt.Extensions`
+- [ ] `Caching.DistributedCacheService` y `Caching.Extensions`
+- [ ] `Common.Extensions.EnumExtensions` y `RegexExtensions`
+- [ ] `Cors.*`
+- [ ] `HealthChecks.HealthCheckEndpoint` y `HealthCheckMiddleware`
+- [ ] `Identity.Audit.*` (Service, EventHandler, Endpoints)
+- [ ] `Identity.Users.Endpoints.*` y `Identity.Tokens.Endpoints.*`
+- [ ] `Persistence.*` (`FshDbContext`, `Interceptors.AuditInterceptor`, `ModelBuilderExtensions`)
+- [ ] `OpenApi.*`
+- [ ] `Mail.SmtpMailService`
+- [ ] `Logging.Serilog.*`
+- [ ] `RateLimit.*` y `SecurityHeaders.*`
+
+## Tooling / CI adicionales
+
+- [ ] Workflows en `.github/workflows` con gating de cobertura ≥90% y publicación de reportes HTML como artefacto.
+- [ ] `dotnet format` y analizadores (FxCop/StyleCop) activados en `.csproj`.
+- [ ] CodeQL/Dependabot y auditoría de vulnerabilidades NuGet.
+- [ ] Scripts: `scripts/test-coverage.ps1`, `scripts/dev-setup.ps1`.
+- [ ] Pipeline de empaquetado `FSH.StarterKit.nuspec` en releases.
+
+## Documentación
+
+- [ ] `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`.
+- [ ] `docs/security/PermissionsMatrix.md`.
+- [ ] `docs/observability/OpenTelemetry.md`.
+- [ ] `docs/multi-tenancy/TenantResolution.md`.
+- [ ] `docs/catalog/DomainModel.md`.
+- [ ] `docs/api/Versioning.md`.
+
+- [ ] Server y Shared
+  - [ ] Server: health endpoints, CORS, versionado, OpenAPI registrado.
+  - [ ] Shared: helpers/utilidades puras.
+
+- [ ] Tooling / CI / Docs
+  - [ ] Añadir `dotnet-reportgenerator-globaltool` y script `scripts/test-coverage.ps1`.
+  - [ ] Gating de cobertura en CI a 90%.
+  - [ ] Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`.

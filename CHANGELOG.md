@@ -22,7 +22,15 @@ All notable changes to this project will be documented in this file.
       - `MultiTenant_Filter_Should_Isolate_Brand_Data_Between_Tenants` (aislamiento multi-tenant y `IgnoreQueryFilters`)
       - `ProductSoftDeleteAndTenantTests` (soft delete de Product y aislamiento multi-tenant con SQLite InMemory; uso de `AuditInterceptor`, `HasQueryFilter` e `IsMultiTenant()`).
 - Documentación: `Roadmap.md` actualizado con el progreso reciente.
- - Tests de DTOs: añadidos tests para `FSH.Framework.Core.Tenant.Dtos.TenantDetail` y `FSH.Framework.Core.Tenancy.Dtos.TenantDetail` cubriendo valores por defecto y asignación de propiedades (getters/setters).
+ - Roadmap: ampliado con nuevos hitos y backlog técnico.
+   - Hito 3: Arquitectura, Observabilidad y Seguridad (OpenTelemetry/Serilog, HealthChecks, rotación de claves JWT y flujo de refresh tokens, versionado OpenAPI, RateLimit y SecurityHeaders).
+   - Hito 4: Funcionalidades Catalog (Category/ProductCategory, ProductImage con almacenamiento, Inventory/StockMovement con Domain Events y Outbox, Price multi-moneda).
+   - Hito 5: Módulo Todo y tiempo real (SignalR) y endpoints siguiendo Vertical Slice.
+   - Hito 6: Rendimiento y datos (AsNoTracking/consultas compiladas, índices y migraciones, resiliencia de conexiones, Jobs/Hangfire por tenant, caching distribuido con Redis).
+   - Backlog técnico por áreas: `Auth.*`, `Caching.*`, `Common.Extensions.*`, `Cors.*`, `HealthChecks.*`, `Identity.Audit.*`, `Identity.Users.*`, `Identity.Tokens.*`, `Persistence.*` (incl. `FshDbContext`, `Interceptors.AuditInterceptor`), `OpenApi.*`, `Mail.SmtpMailService`, `Logging.Serilog.*`, `RateLimit.*`, `SecurityHeaders.*`.
+   - Tooling/CI: workflows con gating de cobertura ≥90% y publicación de reportes, `dotnet format` + analizadores, CodeQL/Dependabot, scripts `scripts/test-coverage.ps1` y `scripts/dev-setup.ps1`, pipeline de empaquetado `FSH.StarterKit.nuspec`.
+   - Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`, `docs/security/PermissionsMatrix.md`, `docs/observability/OpenTelemetry.md`, `docs/multi-tenancy/TenantResolution.md`, `docs/catalog/DomainModel.md`, `docs/api/Versioning.md`.
+  - Tests de DTOs: añadidos tests para `FSH.Framework.Core.Tenant.Dtos.TenantDetail` y `FSH.Framework.Core.Tenancy.Dtos.TenantDetail` cubriendo valores por defecto y asignación de propiedades (getters/setters).
  - Cobertura: regenerado el informe HTML con ReportGenerator en `coverage-report/index.html` tras los nuevos tests.
  - Tests de handlers de Tenant: `CreateTenantHandler`, `GetTenantsHandler`, `GetTenantByIdHandler`, `ActivateTenantHandler`, `DisableTenantHandler` y `UpgradeSubscriptionHandler`. Se cubren caminos felices, propagación de `CancellationToken` donde aplica y error `NotFoundException` en `GetTenantById`.
  - Tarea añadida: revisar y consolidar duplicados potenciales de tests de `CreateTenantHandler` en `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs` y `tests/unit/FSH.Framework.Core.Tests/Tenant/Features/Handlers/CreateTenantHandlerTests.cs`.
