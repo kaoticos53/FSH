@@ -54,7 +54,7 @@
 
 - Correcciones tests Tenant: en `CreateTenantValidatorTests` se eliminaron setups innecesarios de `IConnectionStringValidator.TryValidate` cuando `ConnectionString` es nula o vacía (la regla hace short-circuit); esto resolvió fallos de verificación Moq.
 - Ejecución de comandos: adoptado patrón sentinel `[[CASCADE_DONE]]` para detectar fin de comandos en PowerShell de forma fiable.
-- Cobertura actual (último `coverage.cobertura.xml`): global ≈ 21.28%, `FSH.Framework.Core` ≈ 53.91%.
+- Cobertura actual (último `coverage.cobertura.xml`): global ≈ 21.19%, `FSH.Framework.Core` ≈ 53.91%.
 - Informe HTML de cobertura regenerado: `coverage-report/index.html`.
 
 ## Hito 2: Cobertura ≥90%
@@ -64,7 +64,7 @@
   - Umbral en CI: `-p:Threshold=90 -p:ThresholdType=line`.
 
 - [ ] FSH.Framework.Core (prioridad alta)
-  - [ ] `FshCore` (get_Name) – test simple de propiedad.
+  - [x] `FshCore` (get_Name) – test simple de propiedad.
   - [ ] Tenant Features (Create/Disable/Get/GetById/UpgradeSubscription):
     - [x] Handlers: interacciones con `ITenantService`, caminos felices y errores.
     - [x] Validators: entradas válidas/ inválidas y mensajes esperados (parcial: Activate/Disable/UpgradeSubscription).
@@ -102,7 +102,7 @@
   - [ ] Infraestructura del módulo (si existe): repos/servicios.
 
 - [ ] Server y Shared
-  - [ ] Server: health endpoints, CORS, versionado, OpenAPI registrado.
+  - [x] Server: health endpoints, CORS, versionado, OpenAPI registrado.
   - [ ] Shared: helpers/utilidades puras.
 
 - [ ] Tooling / CI / Docs
@@ -185,7 +185,7 @@
 
 ## Backlog técnico (Cobertura y calidad por área)
 
-- [ ] `Auth.CurrentUserMiddleware`
+- [x] `Auth.CurrentUserMiddleware`
 - [ ] `Auth.Jwt.Extensions`
 - [ ] `Caching.DistributedCacheService` y `Caching.Extensions`
 - [ ] `Common.Extensions.EnumExtensions` y `RegexExtensions`

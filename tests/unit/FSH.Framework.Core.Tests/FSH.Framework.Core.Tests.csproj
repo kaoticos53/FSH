@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Finbuckle.MultiTenant" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
@@ -36,6 +40,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\api\framework\Core\Core.csproj" />
     <ProjectReference Include="..\..\..\src\api\framework\Infrastructure\Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\aspire\service-defaults\ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Shared.csproj" />
   </ItemGroup>
 

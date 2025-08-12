@@ -84,6 +84,8 @@ All notable changes to this project will be documented in this file.
 
 - Blazor: Corregido warning de Razor en `src/apps/blazor/client/Pages/Dashboard.razor` añadiendo `@using FSH.Starter.Blazor.Client.Components.General` para permitir el uso del componente `PageHeader` sin advertencias.
 
+- Linter: añadida documentación XML en métodos de prueba públicos de `Server/HealthEndpointsTests` y `Auth/CurrentUserMiddlewareTests` para resolver advertencias de comentarios XML en el proyecto de tests `FSH.Framework.Core.Tests`.
+
 ### Changed
 - Consolidación de tests duplicados de `CreateTenantHandler` para evitar redundancia y facilitar el mantenimiento.
   - Eliminado: `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs`.
