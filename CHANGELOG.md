@@ -5,42 +5,44 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Frontend: página Dashboard creada en `src/apps/blazor/client/Pages/Dashboard.razor` con ruta `/dashboard` y tarjetas de métricas placeholder (MudBlazor).
+- Tooling: `run.ps1` actualizado para abrir automáticamente `https://localhost:7100/` en el navegador.
+- Automatización: login del Blazor Client usando Puppeteer (clic en "Fill Administrator Credentials" y "Sign In"), redirección validada a `https://localhost:7100/dashboard`, ausencia de botón "Sign In" y presencia de texto de Dashboard.
+- Navegación y validación: confirmada carga correcta del Dashboard en HTTPS tras login y apertura de Browser Preview para interacción manual.
 - Tests de endpoint: `UpdateRolePermissionsEndpoint` devuelve `401 Unauthorized` cuando no hay autenticación, usando `NoAuthHandler` y el helper `BuildRoleEndpointAppWithAuthorizationButNoAuth`.
 - Tests de endpoint: `UpdateRolePermissionsEndpoint` devuelve `500 Internal Server Error` cuando el servicio lanza una excepción no controlada, cubriendo el middleware `CustomExceptionHandler`.
 - Tooling: instalado `dotnet-reportgenerator-globaltool` como herramienta local (manifiesto en `.config/dotnet-tools.json`) y configurado su uso para generar informes de cobertura.
 - Nuevos tests de validadores de Tenant: `ActivateTenantValidator`, `DisableTenantValidator` y `UpgradeSubscriptionValidator` siguiendo TDD, con comentarios XML en español.
 - Documentación de tests: añadidos comentarios XML a clases y métodos públicos de los tests de handlers de Tenant y `CustomExceptionHandler` para resolver advertencias del linter.
- - Integración: nuevo proyecto `FSH.Catalog.Infrastructure.Tests` para tests de integración del módulo Catalog.Infrastructure.
-    - Test CRUD básico para `CatalogRepository<Product>` y `CatalogDbContext` usando SQLite InMemory y helper multi-tenant (`TestMultiTenantAccessor`).
-    - Comentarios XML en español en clases/métodos de test.
-    - Nuevos tests: transacciones (commit/rollback) y concurrencia (actualización tras eliminación) validando `DbUpdateConcurrencyException`.
-    - Nuevos tests CRUD adicionales:
-      - `Brand_CRUD_Should_Work_With_Sqlite_InMemory` (repositorio real `CatalogRepository<Brand>`)
-      - `Product_With_Brand_CRUD_Should_Work_With_Sqlite_InMemory` (relación `Product`-`Brand` con `Include`)
-      - `Brand_Add_Multiple_Should_Persist_All` (múltiples altas)
-      - `Brand_Mixed_Add_Update_Delete_In_One_UnitOfWork_Should_Succeed` (operaciones mixtas en una sola UoW)
-      - `MultiTenant_Filter_Should_Isolate_Brand_Data_Between_Tenants` (aislamiento multi-tenant y `IgnoreQueryFilters`)
-      - `ProductSoftDeleteAndTenantTests` (soft delete de Product y aislamiento multi-tenant con SQLite InMemory; uso de `AuditInterceptor`, `HasQueryFilter` e `IsMultiTenant()`).
+- Integración: nuevo proyecto `FSH.Catalog.Infrastructure.Tests` para tests de integración del módulo Catalog.Infrastructure.
 - Documentación: `Roadmap.md` actualizado con el progreso reciente.
- - Roadmap: ampliado con nuevos hitos y backlog técnico.
-   - Hito 3: Arquitectura, Observabilidad y Seguridad (OpenTelemetry/Serilog, HealthChecks, rotación de claves JWT y flujo de refresh tokens, versionado OpenAPI, RateLimit y SecurityHeaders).
-   - Hito 4: Funcionalidades Catalog (Category/ProductCategory, ProductImage con almacenamiento, Inventory/StockMovement con Domain Events y Outbox, Price multi-moneda).
-   - Hito 5: Módulo Todo y tiempo real (SignalR) y endpoints siguiendo Vertical Slice.
-   - Hito 6: Rendimiento y datos (AsNoTracking/consultas compiladas, índices y migraciones, resiliencia de conexiones, Jobs/Hangfire por tenant, caching distribuido con Redis).
-   - Backlog técnico por áreas: `Auth.*`, `Caching.*`, `Common.Extensions.*`, `Cors.*`, `HealthChecks.*`, `Identity.Audit.*`, `Identity.Users.*`, `Identity.Tokens.*`, `Persistence.*` (incl. `FshDbContext`, `Interceptors.AuditInterceptor`), `OpenApi.*`, `Mail.SmtpMailService`, `Logging.Serilog.*`, `RateLimit.*`, `SecurityHeaders.*`.
-   - Tooling/CI: workflows con gating de cobertura ≥90% y publicación de reportes, `dotnet format` + analizadores, CodeQL/Dependabot, scripts `scripts/test-coverage.ps1` y `scripts/dev-setup.ps1`, pipeline de empaquetado `FSH.StarterKit.nuspec`.
-   - Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`, `docs/security/PermissionsMatrix.md`, `docs/observability/OpenTelemetry.md`, `docs/multi-tenancy/TenantResolution.md`, `docs/catalog/DomainModel.md`, `docs/api/Versioning.md`.
-  - Tests de DTOs: añadidos tests para `FSH.Framework.Core.Tenant.Dtos.TenantDetail` y `FSH.Framework.Core.Tenancy.Dtos.TenantDetail` cubriendo valores por defecto y asignación de propiedades (getters/setters).
- - Cobertura: regenerado el informe HTML con ReportGenerator en `coverage-report/index.html` tras los nuevos tests.
- - Tests de handlers de Tenant: `CreateTenantHandler`, `GetTenantsHandler`, `GetTenantByIdHandler`, `ActivateTenantHandler`, `DisableTenantHandler` y `UpgradeSubscriptionHandler`. Se cubren caminos felices, propagación de `CancellationToken` donde aplica y error `NotFoundException` en `GetTenantById`.
- - Tarea añadida: revisar y consolidar duplicados potenciales de tests de `CreateTenantHandler` en `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs` y `tests/unit/FSH.Framework.Core.Tests/Tenant/Features/Handlers/CreateTenantHandlerTests.cs`.
+- Seguridad: Dashboard protegido con policy específica `Permissions.Dashboard.View` aplicada en `src/apps/blazor/client/Pages/Dashboard.razor`.
+- Integración: Dashboard consumiendo métricas reales (conteos) desde el backend usando `IApiClient`.
+  - Brands: `SearchBrandsEndpointAsync("1", new SearchBrandsCommand { PageNumber = 1, PageSize = 1 })` usando `TotalCount`.
+  - Productos: `SearchProductsEndpointAsync("1", new SearchProductsCommand { PageNumber = 1, PageSize = 1 })` usando `TotalCount`.
+  - Users: `GetUsersListEndpointAsync()` y conteo de elementos.
+  - Roles: `GetRolesEndpointAsync()` y conteo de elementos.
+- Tests de DTOs: añadidos tests para `FSH.Framework.Core.Tenant.Dtos.TenantDetail` y `FSH.Framework.Core.Tenancy.Dtos.TenantDetail` cubriendo valores por defecto y asignación de propiedades (getters/setters).
+- Cobertura: regenerado el informe HTML con ReportGenerator en `coverage-report/index.html` tras los nuevos tests.
+- Tests de handlers de Tenant: `CreateTenantHandler`, `GetTenantsHandler`, `GetTenantByIdHandler`, `ActivateTenantHandler`, `DisableTenantHandler` y `UpgradeSubscriptionHandler`. Se cubren caminos felices, propagación de `CancellationToken` donde aplica y error `NotFoundException` en `GetTenantById`.
+- Tarea añadida: revisar y consolidar duplicados potenciales de tests de `CreateTenantHandler` en `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs` y `tests/unit/FSH.Framework.Core.Tests/Tenant/Features/Handlers/CreateTenantHandlerTests.cs`.
+
+- UX: Añadidos loaders de carga y manejo de errores/notificaciones en el Dashboard (MudBlazor: `MudProgressCircular`, `MudAlert`, `ISnackbar`).
+
+- Despliegue (Proxmox + Docker):
+  - Añadido `src/Dockerfile.Api` para construir la imagen de la API (ASP.NET en 8080).
+  - Actualizado `src/Dockerfile.Blazor` para aceptar `--build-arg API_BASE_URL` y generar `wwwroot/appsettings.json` en build.
+  - Añadido `deploy/docker/docker-compose.yml` con servicios `postgres`, `webapi` y `blazor`, healthcheck y volúmenes persistentes.
+  - Añadido `deploy/docker/.env.sample` para parametrizar puertos, connection string, CORS y `JWT_KEY`.
+  - Documentación de despliegue creada en `docs/deployment/proxmox-docker.md`.
+  - Documentación de despliegue actualizada: sección de migración y seed automáticos, curl para `/health`, `/alive` y `POST /api/token`, y ejemplo de creación de tenant `POST /api/tenants`.
 
 ### Tests
 - Confirmado: 109/109 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
- - Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).
-   - TRX: `tests/integration/FSH.Catalog.Infrastructure.Tests/TestResults/TestResults.trx`.
+- Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).
+  - TRX: `tests/integration/FSH.Catalog.Infrastructure.Tests/TestResults/TestResults.trx`.
 - Cobertura (último Cobertura): global ≈ 20.84%, `FSH.Framework.Core` ≈ 51.47%.
- - Suite `FSH.Framework.Core.Tests` vuelve a pasar tras añadir los tests de DTOs y se ha actualizado el informe de cobertura (`coverage-report/index.html`).
+- Suite `FSH.Framework.Core.Tests` vuelve a pasar tras añadir los tests de DTOs y se ha actualizado el informe de cobertura (`coverage-report/index.html`).
 
 #### Actualización (más reciente)
 - Confirmado: 125/125 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
@@ -77,6 +79,8 @@ All notable changes to this project will be documented in this file.
   - All Identity/Roles feature tests now pass successfully
  - Soft delete (Brand con dependientes Product): ajustado test `Brand_SoftDelete_With_Dependent_Products_Should_Not_Throw_And_Should_Be_Filtered` para hacer `Detach` del `Product` tras su creación, evitando que EF Core aplique `ClientSetNull` a la FK cuando el `Brand` cambia a `Deleted` y el interceptor realiza soft delete. Verificado con SQLite InMemory.
 
+- Blazor: Corregido warning de Razor en `src/apps/blazor/client/Pages/Dashboard.razor` añadiendo `@using FSH.Starter.Blazor.Client.Components.General` para permitir el uso del componente `PageHeader` sin advertencias.
+
 ### Changed
 - Consolidación de tests duplicados de `CreateTenantHandler` para evitar redundancia y facilitar el mantenimiento.
   - Eliminado: `tests/unit/FSH.Framework.Core.Tests/Tenant/CreateTenantHandlerTests.cs`.
@@ -84,6 +88,8 @@ All notable changes to this project will be documented in this file.
 - Improved null safety in test methods by using nullable reference types
 - Updated test assertions to be more precise and avoid potential null reference exceptions
 - Enhanced test method documentation for better maintainability
+
+- Despliegue: `docker-compose.yml` ahora usa `CorsOptions__AllowedOrigins__0=${CORS_ALLOWED_ORIGIN_0}` en lugar de `${BLAZOR_PUBLIC_URL}` para alinear con `.env.sample` y la documentación.
 
 ## [2025-08-10]
 

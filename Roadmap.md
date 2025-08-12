@@ -22,7 +22,24 @@
 - [x] Consolidar utilidades de pruebas multi-tenant en un helper compartido.
 - [x] Documentar el patrón de uso de `IdentityDbContext` InMemory en los tests (`docs/testing/IdentityDbContextInMemory.md`).
 
+### UI: Blazor Dashboard
+
+- [x] Crear página Dashboard en `src/apps/blazor/client/Pages/Dashboard.razor` con ruta `/dashboard`.
+- [x] Ejecutar Blazor Client en `https://localhost:7100` (perfiles en `Properties/launchSettings.json`).
+- [x] Automatizar apertura con `run.ps1` a `https://localhost:7100/`.
+- [x] Automatizar login en Blazor Client y envío de formulario.
+- [x] Verificar acceso a `/dashboard` tras login (HTTPS) y ausencia de botón "Sign In".
+- [x] Conectar métricas reales vía `IApiClient` y endpoints backend (usuarios, roles, productos, marcas) – conteos básicos integrados.
+- [x] Autorización específica aplicada (`Permissions.Dashboard.View`) además del `[Authorize]` global.
+
+- [ ] UX/UI:
+  - [x] Loaders durante carga de métricas (MudProgressCircular).
+  - [x] Manejo de errores y notificaciones (MudAlert, ISnackbar).
+  - [ ] Skeletons.
+  - [ ] Gráficas y tendencias.
+
 ### Estado actual (2025-08-10)
+
 - Tests unitarios: 123/123 pasados en `FSH.Framework.Core.Tests` (NET 9, `Microsoft.EntityFrameworkCore.InMemory` 9.0.2).
 - Resultados TRX: `tests/unit/FSH.Framework.Core.Tests/TestResults/TestResults.trx`.
 - Tests de integración: 12/12 pasados en `FSH.Catalog.Infrastructure.Tests`.
