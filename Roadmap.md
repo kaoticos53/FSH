@@ -109,6 +109,7 @@
   - [x] Crear script `scripts/test-coverage.ps1`.
   - [x] Añadir `dotnet-reportgenerator-globaltool` como herramienta local (`.config/dotnet-tools.json`) y usarlo para generar reportes.
   - [x] Gating de cobertura en CI a 90%.
+  - [x] Ignorar artefactos de cobertura en Git y limpiar índice (`coverage-report/`, `deploy/docker/.env`).
   - [ ] Documentación: `docs/testing/RepositoryAndUnitOfWork.md`, `docs/testing/DomainEvents.md`.
 
 ## Hito 3: Arquitectura, Observabilidad y Seguridad

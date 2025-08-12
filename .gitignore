@@ -152,6 +152,12 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
+# ReportGenerator HTML report output
+coverage-report/
+# Local Docker compose env overrides
+deploy/docker/.env
+# Erroneous coverage output folder (legacy runs)
+scripts/-report/
 
 # Visual Studio code coverage results
 *.coverage

@@ -94,6 +94,9 @@ All notable changes to this project will be documented in this file.
 
 - Despliegue: `docker-compose.yml` ahora usa `CorsOptions__AllowedOrigins__0=${CORS_ALLOWED_ORIGIN_0}` en lugar de `${BLAZOR_PUBLIC_URL}` para alinear con `.env.sample` y la documentación.
 
+- Tooling: `.gitignore` actualizado para ignorar `coverage-report/`, `deploy/docker/.env` y la carpeta obsoleta `scripts/-report/`.
+- Repositorio: limpiado el índice Git para eliminar artefactos de cobertura previamente versionados.
+
 ## [2025-08-10]
 
 ### Added
