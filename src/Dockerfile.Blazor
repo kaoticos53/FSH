@@ -5,8 +5,11 @@ COPY . ./
 RUN dotnet publish ./apps/blazor/client/Client.csproj -c Release -o output
 
 FROM nginx:alpine
+ARG API_BASE_URL="http://localhost:7000/"
 WORKDIR /usr/share/nginx/html
 COPY --from=build-env /app/output/wwwroot .
+
+RUN echo "{ \"ApiBaseUrl\": \"${API_BASE_URL}\" }" > /usr/share/nginx/html/appsettings.json
 
 COPY ./apps/blazor/nginx.conf /etc/nginx/nginx.conf
 

@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+
+# Etapa de build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copiar el código fuente (contexto esperado: carpeta src/)
+COPY . .
+
+# Restaurar dependencias y publicar
+RUN dotnet restore ./api/server/Server.csproj -c Release \
+ && dotnet publish ./api/server/Server.csproj -c Release -o /app/out /p:UseAppHost=false
+
+# Etapa final de runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+
+# Copiar binarios publicados
+COPY --from=build /app/out .
+
+# Configurar Kestrel para escuchar en 8080 dentro del contenedor
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_EnableDiagnostics=0
+
+EXPOSE 8080
+
+# Entrada
+ENTRYPOINT ["dotnet", "FSH.Starter.WebApi.Host.dll"]

@@ -1,0 +1,108 @@
+@page "/dashboard"
+
+@attribute [Authorize(Policy = "Permissions.Dashboard.View")]
+@using System.Linq
+@using FSH.Starter.Blazor.Infrastructure.Api
+@using FSH.Starter.Blazor.Client.Components.General
+@inject IApiClient ApiClient
+
+<PageHeader Title="Dashboard" Header="Dashboard" SubHeader="Overview of key metrics." />
+
+@if (isLoading)
+{
+    <div class="d-flex justify-center mt-6">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    </div>
+}
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
+        @ErrorMessage
+    </MudAlert>
+}
+
+@if (!isLoading)
+{
+    <MudGrid Class="mt-4" GutterSize="GutterSize.Small">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Users</MudText>
+                <MudText Typo="Typo.h4">@UsersCount</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Roles</MudText>
+                <MudText Typo="Typo.h4">@RolesCount</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Products</MudText>
+                <MudText Typo="Typo.h4">@ProductsCount</MudText>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="pa-4">
+                <MudText Typo="Typo.subtitle2">Brands</MudText>
+                <MudText Typo="Typo.h4">@BrandsCount</MudText>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    // Métricas iniciales.
+    private int UsersCount = 0;
+    private int RolesCount = 0;
+    private int ProductsCount = 0;
+    private int BrandsCount = 0;
+    
+    // Estado de carga y error para mejorar UX.
+    private bool isLoading = true;
+    private string? ErrorMessage;
+
+    // Carga de métricas reales desde la API.
+    protected override async Task OnInitializedAsync()
+    {
+        // Nota: Para productos y marcas usamos endpoints paginados para obtener TotalCount sin traer todos los elementos.
+        //       Para usuarios y roles usamos endpoints de lista y contamos los elementos devueltos.
+        isLoading = true;
+        try
+        {
+            // Brands (TotalCount mediante búsqueda paginada)
+            var brandsPaged = await ApiClient.SearchBrandsEndpointAsync("1", new SearchBrandsCommand
+            {
+                PageNumber = 1,
+                PageSize = 1
+            });
+            BrandsCount = brandsPaged?.TotalCount ?? 0;
+
+            // Products (TotalCount mediante búsqueda paginada)
+            var productsPaged = await ApiClient.SearchProductsEndpointAsync("1", new SearchProductsCommand
+            {
+                PageNumber = 1,
+                PageSize = 1
+            });
+            ProductsCount = productsPaged?.TotalCount ?? 0;
+
+            // Users (conteo a partir de lista completa)
+            var users = await ApiClient.GetUsersListEndpointAsync();
+            UsersCount = users?.Count() ?? 0;
+
+            // Roles (conteo a partir de lista completa)
+            var roles = await ApiClient.GetRolesEndpointAsync();
+            RolesCount = roles?.Count() ?? 0;
+        }
+        catch (Exception ex)
+        {
+            // En caso de error, mantenemos valores en 0 y notificamos al usuario.
+            ErrorMessage = "No se pudieron cargar las métricas del Dashboard. Inténtalo de nuevo.";
+            Toast.Add($"Error al cargar métricas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
