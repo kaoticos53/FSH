@@ -38,6 +38,17 @@
   - [ ] Skeletons.
   - [ ] Gráficas y tendencias.
 
+### Despliegue (Docker Compose)
+
+- [x] Crear `.env` desde `.env.sample` y configurar variables.
+- [x] `docker compose build` (API, Blazor) y `docker compose up -d`.
+- [x] Verificar API: `GET /alive` 200, `GET /health` 200, `GET /metrics` 200.
+- [x] Verificar Blazor: respuesta 200 en raíz y acceso al Dashboard.
+- [x] Corregido healthcheck de Postgres: `pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}`; contenedor en estado `healthy`.
+- [ ] Obtener token con `POST /api/token` (admin root) y probar endpoints protegidos.
+- [ ] Crear tenant con `POST /api/tenants` y comprobar migraciones/seed por tenant.
+- [ ] Replicar en servidor Proxmox y documentar ajustes.
+
 ### Estado actual (2025-08-10)
 
 - Tests unitarios: 123/123 pasados en `FSH.Framework.Core.Tests` (NET 9, `Microsoft.EntityFrameworkCore.InMemory` 9.0.2).

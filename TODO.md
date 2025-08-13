@@ -38,10 +38,11 @@
 - [x] Crear `deploy/docker/docker-compose.yml` y `deploy/docker/.env.sample`.
 - [x] Alinear CORS en compose: usar `CORS_ALLOWED_ORIGIN_0`.
 - [ ] Validar despliegue end-to-end en servidor Proxmox:
-  - [ ] Copiar `.env.sample` a `.env` y configurar variables.
-  - [ ] `docker compose build` (API, Blazor) y `docker compose up -d`.
-  - [ ] Verificar `/health` y `/alive` en API.
+  - Nota: validado localmente con Docker Compose; replicar en Proxmox.
+  - [x] Copiar `.env.sample` a `.env` y configurar variables.
+  - [x] `docker compose build` (API, Blazor) y `docker compose up -d`.
+  - [x] Verificar `/health` y `/alive` en API.
   - [ ] Obtener token con `POST /api/token` (admin root) y probar endpoints protegidos.
   - [ ] Crear tenant con `POST /api/tenants` y comprobar migraciones/seed por tenant.
-  - [ ] Acceder a Blazor y confirmar conectividad contra la API.
+  - [x] Acceder a Blazor y confirmar conectividad contra la API.
   - [ ] Opcional: configurar reverse proxy (Traefik/Caddy) con TLS.

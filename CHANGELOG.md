@@ -40,6 +40,9 @@ All notable changes to this project will be documented in this file.
   - CI: añadido workflow `CI` en `.github/workflows/ci.yml` que ejecuta `./scripts/test-coverage.ps1` con umbral de cobertura del 90%, publica `coverage-report` y TRX como artefactos, y realiza smoke tests de Docker Compose verificando `GET /health`, `GET /alive` y respuesta 200 del Blazor Client.
   - Tooling: el script `scripts/test-coverage.ps1` se integra en CI y utiliza `dotnet tool restore` para ejecutar `reportgenerator` desde el manifiesto local `.config/dotnet-tools.json` (versión 5.4.12).
 
+### Changed
+- Compose: `OriginOptions__OriginUrl` ahora usa `${BLAZOR_PUBLIC_URL}` en lugar de `${API_BASE_URL}` para generar enlaces hacia el frontend correctamente.
+
 ### Tests
 - Confirmado: 109/109 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).
 - Confirmado: 12/12 tests de `FSH.Catalog.Infrastructure.Tests` pasan correctamente (NET 9).
@@ -57,6 +60,8 @@ All notable changes to this project will be documented in this file.
 - Nota: Se ha actualizado el contador de tests de integración a 12/12.
 
 ### Fixed
+- Despliegue: corregido healthcheck de Postgres en `deploy/docker/docker-compose.yml` para usar `pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}`, evitando errores “database 'admin' does not exist” y mejorando la fiabilidad del healthcheck.
+- Validación: Docker Compose local verificado: `GET /alive` 200, `GET /health` 200, `GET /metrics` 200 en API (`http://localhost:${API_HOST_PORT}`) y Blazor 200 en raíz (`http://localhost:${BLAZOR_HOST_PORT}/`).
 - Fixed failing test in `UpdatePermissions_ShouldRemoveUnselectedPermissions_And_AddNewlySelectedPermissions`
   - Identified that `RoleService` uses `DbContext` to add claims instead of `AddClaimAsync`
   - Updated test expectations to match actual service behavior
