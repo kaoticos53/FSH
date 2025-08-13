@@ -1,0 +1,47 @@
+# docker-compose override opcional para Traefik (reverse proxy con TLS)
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+# Requisitos:
+#   Definir en .env: API_HOST, BLAZOR_HOST, LETSENCRYPT_EMAIL
+
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: fsh_traefik
+    command:
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    restart: unless-stopped
+
+  webapi:
+    labels:
+      - traefik.enable=true
+      # Regla por hostname (api dominio)
+      - traefik.http.routers.api.rule=Host(`${API_HOST}`)
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls.certresolver=le
+      # Puerto interno expuesto por el contenedor de la API
+      - traefik.http.services.api.loadbalancer.server.port=8080
+
+  blazor:
+    labels:
+      - traefik.enable=true
+      # Regla por hostname (frontend dominio)
+      - traefik.http.routers.blazor.rule=Host(`${BLAZOR_HOST}`)
+      - traefik.http.routers.blazor.entrypoints=websecure
+      - traefik.http.routers.blazor.tls.certresolver=le
+      # Puerto interno expuesto por el contenedor de Blazor
+      - traefik.http.services.blazor.loadbalancer.server.port=80
+
+volumes:
+  letsencrypt:

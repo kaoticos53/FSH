@@ -45,6 +45,7 @@
 - [x] Verificar API: `GET /alive` 200, `GET /health` 200, `GET /metrics` 200.
 - [x] Verificar Blazor: respuesta 200 en raíz y acceso al Dashboard.
 - [x] Corregido healthcheck de Postgres: `pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}`; contenedor en estado `healthy`.
+- [x] Documentado reverse proxy con Traefik y creado override opcional `deploy/docker/docker-compose.traefik.yml`; añadido `healthcheck` a `webapi` y variables opcionales en `.env.sample`.
 - [ ] Obtener token con `POST /api/token` (admin root) y probar endpoints protegidos.
 - [ ] Crear tenant con `POST /api/tenants` y comprobar migraciones/seed por tenant.
 - [ ] Replicar en servidor Proxmox y documentar ajustes.

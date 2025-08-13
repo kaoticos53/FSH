@@ -39,9 +39,12 @@ All notable changes to this project will be documented in this file.
 
   - CI: añadido workflow `CI` en `.github/workflows/ci.yml` que ejecuta `./scripts/test-coverage.ps1` con umbral de cobertura del 90%, publica `coverage-report` y TRX como artefactos, y realiza smoke tests de Docker Compose verificando `GET /health`, `GET /alive` y respuesta 200 del Blazor Client.
   - Tooling: el script `scripts/test-coverage.ps1` se integra en CI y utiliza `dotnet tool restore` para ejecutar `reportgenerator` desde el manifiesto local `.config/dotnet-tools.json` (versión 5.4.12).
+  - Despliegue: añadido override opcional `deploy/docker/docker-compose.traefik.yml` con Traefik (TLS automático) y variables en `.env.sample` (`API_HOST`, `BLAZOR_HOST`, `LETSENCRYPT_EMAIL`).
+  - Documentación: `docs/deployment/proxmox-docker.md` ampliada con secciones de Traefik/TLS, healthchecks, backups/restore, observabilidad, operativa post-deploy y seguridad.
 
 ### Changed
 - Compose: `OriginOptions__OriginUrl` ahora usa `${BLAZOR_PUBLIC_URL}` en lugar de `${API_BASE_URL}` para generar enlaces hacia el frontend correctamente.
+- Compose: añadido `healthcheck` al servicio `webapi` para validar `/health` y mejorar resiliencia.
 
 ### Tests
 - Confirmado: 109/109 tests de `FSH.Framework.Core.Tests` pasan correctamente (NET 9).

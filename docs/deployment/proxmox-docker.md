@@ -54,7 +54,7 @@ docker compose logs -f webapi
 Notas técnicas:
 
 - Multitenancy: `UseMultitenancy()` inicializa el tenant store y ejecuta `IDbInitializer.MigrateAsync/SeedAsync` por tenant (`src/api/framework/Infrastructure/Tenant/Extensions.cs`).
-- Origin de archivos/imágenes: `OriginOptions__OriginUrl` debe apuntar a la URL de la API (sirve `/assets/...`).
+- Origen público: `OriginOptions__OriginUrl` debe apuntar a la URL pública del frontend (Blazor), usada por la API para generar enlaces correctos (assets y callbacks).
 
 ### Crear un nuevo tenant (opcional)
 
@@ -120,3 +120,148 @@ docker compose up -d
 - Errores de conexión DB: verifica `DatabaseOptions__ConnectionString` (el host debe ser `postgres`, puerto 5432 interno)
 - CORS bloqueado: revisa `CORS_ALLOWED_ORIGIN_0` y `BLAZOR_PUBLIC_URL`
 - JWT inválido: coloca una `JWT_KEY` fuerte y consistente en cada despliegue
+
+## Notas Proxmox (VM vs LXC)
+
+- VM (recomendado): menos fricción con Docker y systemd.
+- LXC: habilitar nesting y cgroups/overlayfs.
+  - En Proxmox: Opciones del contenedor → Características → Marcar "Nesting".
+  - Asegurar: `features: keyctl=1,nesting=1` en la config del CT.
+  - Si hay problemas con overlay: usar `fuse-overlayfs` o `vfs` como storage driver para Docker.
+
+## Reverse proxy y TLS (Traefik)
+
+Ejemplo básico de Traefik en el mismo Compose con Let's Encrypt:
+
+```yaml
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: fsh_traefik
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+    restart: unless-stopped
+
+  webapi:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${API_HOST}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=le"
+      - "traefik.http.services.api.loadbalancer.server.port=8080"
+
+  blazor:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.blazor.rule=Host(`${BLAZOR_HOST}`)"
+      - "traefik.http.routers.blazor.entrypoints=websecure"
+      - "traefik.http.routers.blazor.tls.certresolver=le"
+      - "traefik.http.services.blazor.loadbalancer.server.port=80"
+
+volumes:
+  letsencrypt:
+```
+
+Variables típicas en `.env`:
+
+```dotenv
+API_HOST=api.tu-dominio.com
+BLAZOR_HOST=app.tu-dominio.com
+LETSENCRYPT_EMAIL=tu-email@dominio.com
+```
+
+Notas:
+- Con Traefik no es necesario publicar puertos 7000/7100 hacia el host; expone 80/443 y enruta por hostnames.
+- Mantén `API_BASE_URL` y `BLAZOR_PUBLIC_URL` con `https://` y los dominios finales para compilar/servir correctamente.
+
+## Healthchecks (API)
+
+Añade un healthcheck a la API para reinicios automáticos si algo falla:
+
+```yaml
+webapi:
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 5
+```
+
+Comprobaciones manuales:
+
+```bash
+curl -i http://IP_SERVIDOR:7000/health
+curl -i http://IP_SERVIDOR:7000/alive
+```
+
+## Backups y restore
+
+- PostgreSQL (dump lógico):
+
+```bash
+# Backup
+docker exec -t fsh_postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > backup_$(date +%F).sql
+
+# Restore (con servicio detenido o nueva DB)
+docker exec -i fsh_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < backup.sql
+```
+
+- Volúmenes (persistencia):
+  - DB: `pgdata` (incluye WAL y datos). Para copias consistentes, preferible dump lógico o parada temporal del contenedor.
+  - App: si añades volúmenes para logs o uploads, inclúyelos en la política de backup.
+
+- Programación: usar `cron` en la VM para dumps diarios/semanales y rotación.
+
+## Observabilidad y logs
+
+- Logs: la API emite logs (Serilog). Usa `docker compose logs` o monta un volumen para exportarlos a un colector (Loki/ELK).
+- Métricas: expón `/metrics` si Prometheus está habilitado y documentado; de lo contrario, planifica integración (Future Work).
+- Trazas: planificar OpenTelemetry para traces distribuidos en el roadmap.
+
+## Operativa post-deploy
+
+- Smoke tests tras cada despliegue:
+
+```bash
+curl -Sf http://IP_SERVIDOR:7000/health
+curl -Sf http://IP_SERVIDOR:7000/alive
+curl -Sf http://IP_SERVIDOR:7100/ || true  # si no usas proxy
+```
+
+- Actualizaciones:
+
+```bash
+git pull
+# Recompilar si cambian fuentes
+docker compose build webapi blazor
+# Reaplicar
+docker compose up -d
+```
+
+- Rollback:
+  - Etiqueta imágenes con versiones (tags) y conserva la anterior.
+  - Si falla un despliegue, vuelve al tag previo y `docker compose up -d`.
+
+## Seguridad
+
+- No publiques Postgres hacia Internet salvo necesidad; si es necesario, restringe por firewall y redes.
+- Usa `JWT_KEY` fuerte y rota periódicamente.
+- Revisa CORS: `CORS_ALLOWED_ORIGIN_0` debe coincidir con el origen público del frontend.
+- Mantén `.env` fuera de Git (ya ignorado) y usa secretos/variables seguras en CI/CD.
+
+## Solución de problemas (ampliado)
+
+- DB: si `pg_isready` falla, revisa credenciales y volumen `pgdata`.
+- API: si no arranca, valida `DatabaseOptions__ConnectionString` y que `postgres` está `healthy`.
+- Blazor: si no carga, verifica `API_BASE_URL` en build y CORS en la API.
