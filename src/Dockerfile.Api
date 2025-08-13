@@ -12,6 +12,10 @@ RUN dotnet restore ./api/server/Server.csproj && dotnet publish ./api/server/Ser
 
 # Etapa final de runtime
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+## Dependencias de sistema para healthchecks y certificados
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copiar binarios publicados

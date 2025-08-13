@@ -192,10 +192,11 @@ Añade un healthcheck a la API para reinicios automáticos si algo falla:
 ```yaml
 webapi:
   healthcheck:
-    test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+    test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
     interval: 15s
     timeout: 5s
     retries: 5
+    start_period: 30s
 ```
 
 Comprobaciones manuales:
